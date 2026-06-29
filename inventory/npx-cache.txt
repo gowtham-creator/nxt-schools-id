@@ -1,0 +1,27 @@
+UNIQUE npx-invoked packages (26):
+@21st-dev/magic
+@aidesigner/agent-skills
+@modelcontextprotocol/server-sequential-thinking
+@playwright/mcp
+@upstash/context7-mcp
+add-mcp
+antigravity-awesome-skills
+chrome-devtools-mcp
+claude-mem
+codeburn
+create-next-app
+ctx7
+cursor-talk-to-figma-mcp
+cursor-talk-to-figma-socket
+firecrawl-cli
+get-shit-done-cc
+getdesign
+impeccable
+mcp-three
+puppeteer-core
+serve
+shadcn
+skills
+tsx
+uilora
+vercel

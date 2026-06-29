@@ -1,0 +1,11 @@
+/Users/gowthamreddy/.nvm/versions/node/v24.13.1/lib
+├── @anthropic-ai/claude-code@2.1.170
+├── context-mode@1.0.39 -> ./../../../../../.claude/plugins/cache/context-mode/context-mode/1.0.39
+├── corepack@0.34.6
+├── firebase-tools@15.11.0
+├── firecrawl-cli@1.15.2
+├── npm@11.8.0
+├── pnpm@11.0.8
+├── uipro-cli@2.2.3
+└── vercel@54.14.2
+

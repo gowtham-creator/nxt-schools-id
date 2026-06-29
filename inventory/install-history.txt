@@ -1,0 +1,22 @@
+   2 npx get-shit-done-cc
+   2 npm install react-google-recaptcha @types/react-google-recaptcha
+   2 npm install -g firebase-tools
+   2 npm install -g @anthropic-ai/claude-code@latest
+   2 npm install -g @anthropic-ai/claude-code
+   2 npm install
+   1 pip3 install -r requirements.txt 2>&1 | tail -20
+   1 pip install node.js
+   1 npx playwright install chromium
+   1 npx next dev
+   1 npm install next.js
+   1 cd career-ops && npm install\
+   1 brew install wget
+   1 brew install nodejs
+   1 brew Install node
+   1 brew install node
+   1 brew install jq
+   1 brew install git-lfs
+   1 brew install cocoapods
+   1 brew install --cask google-cloud-sdk
+   1 brew install --cask flutter
+   1 brew install --cask claude-code
