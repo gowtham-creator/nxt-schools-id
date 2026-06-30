@@ -5,6 +5,12 @@ export type MemberType = "student" | "staff";
 export type MemberStatus = "active" | "inactive" | "archived";
 export type AppRole = "super_admin" | "admin" | "operator";
 export type CardStatus = "pending" | "generated" | "printed" | "revoked";
+export type PipelineStatus =
+  | "not_generated"
+  | "generated"
+  | "print_approval_pending"
+  | "sent_for_printing"
+  | "printed";
 
 export interface School {
   id: string;
@@ -36,6 +42,29 @@ export interface ClassRow {
   name: string;
   section: string | null;
   academic_year: string | null;
+  branch_id: string | null;
+  created_at: string;
+}
+
+export interface Branch {
+  id: string;
+  school_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  status: "active" | "inactive";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AcademicYear {
+  id: string;
+  school_id: string;
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
   created_at: string;
 }
 
@@ -63,6 +92,13 @@ export interface Member {
   valid_until: string | null;
   status: MemberStatus;
   qr_token: string;
+  branch_id: string | null;
+  template_id: string | null;
+  academic_year_id: string | null;
+  pipeline_status: PipelineStatus;
+  card_pdf_url: string | null;
+  card_generated_at: string | null;
+  bg_removed: boolean;
   extra: Record<string, unknown>;
   created_at: string;
   updated_at: string;

@@ -37,6 +37,16 @@ export const classSchema = z.object({
   academic_year: z.preprocess(emptyToNull, z.string().trim().max(20).nullable()),
 });
 
+export const academicYearSchema = z.object({
+  name: z.string().trim().min(1, "Year name is required").max(40),
+  start_date: z.preprocess(emptyToNull, dateStr),
+  end_date: z.preprocess(emptyToNull, dateStr),
+  // Unchecked checkboxes are absent from FormData -> undefined -> false.
+  is_current: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
+});
+
+export type AcademicYearInput = z.infer<typeof academicYearSchema>;
+
 /** Build a plain object from FormData string entries for schema parsing. */
 export function formToObject(fd: FormData): Record<string, unknown> {
   const o: Record<string, unknown> = {};
