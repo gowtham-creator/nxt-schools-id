@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import CardSide, { type CardSideData } from "@/lib/card-render";
 import { CARD, DISPLAY_K, buildPreviewData, clamp, newElement, snap } from "@/lib/designer/geometry";
@@ -87,11 +87,27 @@ export default function TemplateDesigner({
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const dragging = useRef(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [fitK, setFitK] = useState(DISPLAY_K);
+
+  useEffect(() => {
+    const node = wrapRef.current;
+    if (!node) return;
+    const recompute = () => {
+      const cw = node.clientWidth - 48;
+      const ch = node.clientHeight - 48;
+      setFitK(Math.max(2, Math.min(DISPLAY_K, cw / W, ch / H)));
+    };
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, []);
 
   const current = sides[side];
   const selected = current.elements.find((e) => e.id === selectedId) ?? null;
   const data: CardSideData = buildPreviewData(current, { logo: school?.logo_url ?? null });
-  const px = (mm: number) => mm * DISPLAY_K;
+  const px = (mm: number) => mm * fitK;
 
   const mutateSide = useCallback(
     (fn: (s: TemplateSide) => TemplateSide) => {
@@ -140,8 +156,8 @@ export default function TemplateDesigner({
     const o = { x: el.x, y: el.y, w: el.w, h: el.h };
     const id = el.id;
     const onMove = (ev: PointerEvent) => {
-      const dx = (ev.clientX - sx) / DISPLAY_K;
-      const dy = (ev.clientY - sy) / DISPLAY_K;
+      const dx = (ev.clientX - sx) / fitK;
+      const dy = (ev.clientY - sy) / fitK;
       if (mode === "move") {
         patchEl(id, { x: snap(clamp(o.x + dx, 0, W - 2)), y: snap(clamp(o.y + dy, 0, H - 2)) });
       } else {
@@ -246,13 +262,13 @@ export default function TemplateDesigner({
         </div>
 
         {/* Center: canvas */}
-        <div className="flex min-w-0 flex-1 items-center justify-center overflow-auto bg-slate-200 p-8">
+        <div ref={wrapRef} className="flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-slate-200 p-6">
           <div
             className="relative shadow-lg ring-1 ring-slate-300"
             style={{ width: px(W), height: px(H) }}
             onPointerDown={() => setSelectedId(null)}
           >
-            <CardSide side={current} data={data} widthMm={W} heightMm={H} scale={DISPLAY_K} />
+            <CardSide side={current} data={data} widthMm={W} heightMm={H} scale={fitK} />
             <div className="absolute inset-0">
               {current.elements.map((el) => {
                 const isSel = el.id === selectedId;
