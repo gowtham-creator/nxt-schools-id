@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import CardSide, { type CardSideData } from "@/lib/card-render";
-import { CARD, DISPLAY_K, buildPreviewData, clamp, newElement, snap } from "@/lib/designer/geometry";
+import { DISPLAY_K, buildPreviewData, clamp, newElement, snap } from "@/lib/designer/geometry";
 import { BINDABLE_FIELDS } from "@/lib/constants";
 import { saveTemplate } from "../../actions";
 import type {
@@ -15,8 +15,6 @@ import type {
 } from "@/lib/types";
 
 type SideKey = "front" | "back";
-const W = CARD.widthMm;
-const H = CARD.heightMm;
 const inp =
   "mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900";
 
@@ -77,6 +75,8 @@ export default function TemplateDesigner({
   template: IdTemplate;
   school: Partial<School> | null;
 }) {
+  const W = template.width_mm;
+  const H = template.height_mm;
   const [name, setName] = useState(template.name);
   const [side, setSide] = useState<SideKey>("front");
   const [sides, setSides] = useState<{ front: TemplateSide; back: TemplateSide }>({
