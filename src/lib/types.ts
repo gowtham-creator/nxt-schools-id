@@ -105,6 +105,17 @@ export interface TemplateElement {
   fill?: string;
   borderColor?: string;
   borderWidth?: number;
+  // editor metadata + render extras (all optional -> jsonb back-compat, no migration; see PHASE-2-3-ARCHITECTURE §1.2)
+  name?: string; // layer label in the Layers panel
+  locked?: boolean; // editor: ignore pointer/Moveable; still renders
+  hidden?: boolean; // editor-only: skipped in preview, rendered in print (renderHidden)
+  opacity?: number; // 0..1, for watermarks / faded backgrounds
+  fontStyle?: "normal" | "italic";
+  lineHeight?: number; // unitless multiplier
+  letterSpacing?: number; // mm
+  valign?: "top" | "middle" | "bottom"; // vertical align inside the box
+  objectPosition?: string; // CSS object-position, e.g. "center" | "top"
+  ecLevel?: "L" | "M" | "Q" | "H"; // QR error-correction (default "M")
 }
 
 export interface TemplateSide {
