@@ -46,46 +46,49 @@ export default async function AcademicYearsPage({
         </summary>
         <form action={createAcademicYear} className="mt-4 flex flex-wrap items-end gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-500">Name</label>
+            <label htmlFor="name" className="field-label">Name</label>
             <input
+              id="name"
               name="name"
               required
               placeholder="2024-2025"
-              className="mt-1 w-48 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input w-48"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500">Start date</label>
+            <label htmlFor="start_date" className="field-label">Start date</label>
             <input
+              id="start_date"
               type="date"
               name="start_date"
-              className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500">End date</label>
+            <label htmlFor="end_date" className="field-label">End date</label>
             <input
+              id="end_date"
               type="date"
               name="end_date"
-              className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
           <label className="flex items-center gap-2 pb-2 text-sm text-slate-600">
             <input
               type="checkbox"
               name="is_current"
-              className="h-4 w-4 rounded border-slate-300"
+              className="h-4 w-4 rounded border-slate-300 accent-teal-600 cursor-pointer"
             />
             Set as current
           </label>
-          <button className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+          <button className="btn-primary">
             Add
           </button>
         </form>
       </details>
 
       {/* Table */}
-      <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="card mt-5 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
@@ -122,11 +125,11 @@ export default async function AcademicYearsPage({
                 <td className="px-4 py-2 text-right">
                   {!y.is_current && (
                     <form action={setCurrentYear.bind(null, y.id)} className="inline">
-                      <button className="text-slate-600 hover:underline">Set current</button>
+                      <button className="btn-ghost btn-sm">Set current</button>
                     </form>
                   )}
                   <form action={deleteAcademicYear.bind(null, y.id)} className="ml-3 inline">
-                    <button className="text-red-600 hover:underline">Delete</button>
+                    <button className="btn-danger btn-sm">Delete</button>
                   </form>
                 </td>
               </tr>

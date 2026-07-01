@@ -64,7 +64,7 @@ export default async function UsersPage({
       )}
 
       {/* Invite user */}
-      <details className="mt-5 rounded-xl border border-slate-200 bg-white">
+      <details className="card mt-5">
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-900">
           + Invite user
         </summary>
@@ -73,18 +73,20 @@ export default async function UsersPage({
           className="grid gap-3 border-t border-slate-200 px-4 py-4 sm:grid-cols-2"
         >
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Full name</label>
+            <label htmlFor="full_name" className="field-label">Full name</label>
             <input
+              id="full_name"
               name="full_name"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Role</label>
+            <label htmlFor="role" className="field-label">Role</label>
             <select
+              id="role"
               name="role"
               defaultValue="operator"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="field-input"
             >
               {assignableRoles.map((r) => (
                 <option key={r} value={r}>
@@ -94,25 +96,27 @@ export default async function UsersPage({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+            <label htmlFor="email" className="field-label">Email</label>
             <input
+              id="email"
               name="email"
               type="email"
               required
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+            <label htmlFor="password" className="field-label">Password</label>
             <input
+              id="password"
               name="password"
               type="password"
               required
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
           <div className="sm:col-span-2">
-            <button className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+            <button className="btn-primary">
               Create user
             </button>
           </div>
@@ -120,7 +124,7 @@ export default async function UsersPage({
       </details>
 
       {/* Table */}
-      <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="card mt-5 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
@@ -170,7 +174,7 @@ export default async function UsersPage({
                         <select
                           name="role"
                           defaultValue={rowRoles.includes(u.role) ? u.role : "operator"}
-                          className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+                          className="field-input w-auto"
                         >
                           {rowRoles.map((r) => (
                             <option key={r} value={r}>
@@ -178,7 +182,7 @@ export default async function UsersPage({
                             </option>
                           ))}
                         </select>
-                        <button className="rounded-md border border-slate-300 px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                        <button className="btn-secondary btn-sm">
                           Save
                         </button>
                       </form>
@@ -189,7 +193,7 @@ export default async function UsersPage({
                   <td className="px-4 py-2 text-right">
                     {showRemove ? (
                       <form action={deleteUser.bind(null, u.id)} className="inline">
-                        <button className="text-red-600 hover:underline">Remove</button>
+                        <button className="btn-danger btn-sm">Remove</button>
                       </form>
                     ) : (
                       <span className="text-slate-300">—</span>

@@ -1,26 +1,101 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ─────────────────────────────────────────────────────────────
+   Design tokens (Nxt Schools ID — clean professional admin)
+   Neutral: slate · Brand accent: teal (matches the printed cards)
+   ───────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-slate-50 font-sans text-slate-900 antialiased;
+  }
+  ::selection {
+    @apply bg-teal-600/20 text-slate-900;
+  }
+  /* Consistent, branded keyboard focus for anything not covered by a component class */
+  :where(a, button, [role="button"], summary):focus-visible {
+    @apply outline-none ring-2 ring-teal-600/40 ring-offset-2 ring-offset-white rounded-md;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─────────────────────────────────────────────────────────────
+   Reusable component classes — apply consistently across pages
+   ───────────────────────────────────────────────────────────── */
+@layer components {
+  /* Form fields ------------------------------------------------ */
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+  .field-input {
+    @apply block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm
+      text-slate-900 shadow-sm transition-[color,box-shadow,border-color] duration-150
+      placeholder:text-slate-400 hover:border-slate-400
+      focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10
+      disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400;
+  }
+  .field-input-invalid {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500/10;
+  }
+  .field-hint {
+    @apply mt-1 text-xs text-slate-400;
+  }
+  .field-error {
+    @apply mt-1 text-xs font-medium text-red-600;
+  }
+
+  /* Buttons ---------------------------------------------------- */
+  .btn-primary {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg
+      bg-teal-700 px-4 py-2.5 text-sm font-medium text-white shadow-sm
+      transition-colors duration-150 hover:bg-teal-800
+      focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-600/25
+      disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-secondary {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg
+      border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700
+      shadow-sm transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50
+      focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-900/10
+      disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-ghost {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg
+      px-3 py-2 text-sm font-medium text-slate-600 transition-colors duration-150
+      hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-danger {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg
+      border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600
+      transition-colors duration-150 hover:border-red-300 hover:bg-red-50
+      disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5;
+  }
+
+  /* Surfaces --------------------------------------------------- */
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  /* Sidebar nav ------------------------------------------------ */
+  .nav-link {
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600
+      transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900;
+  }
+  .nav-link-active {
+    @apply bg-teal-50 text-teal-800 hover:bg-teal-50 hover:text-teal-800;
+  }
 }

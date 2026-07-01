@@ -61,9 +61,7 @@ export function PhotoField({ initialUrl }: Props) {
 
       <div className="mt-3 flex flex-col items-center gap-1.5">
         <label
-          className={`inline-block cursor-pointer rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 ${
-            pending ? "opacity-50" : ""
-          }`}
+          className={`btn-secondary btn-sm ${pending ? "opacity-50" : ""}`}
         >
           {pending ? "Uploading…" : "Upload photo"}
           <input
@@ -78,7 +76,7 @@ export function PhotoField({ initialUrl }: Props) {
           type="button"
           onClick={() => setShowCamera((v) => !v)}
           disabled={pending}
-          className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="btn-ghost btn-sm"
         >
           {showCamera ? "Close camera" : "Use camera"}
         </button>

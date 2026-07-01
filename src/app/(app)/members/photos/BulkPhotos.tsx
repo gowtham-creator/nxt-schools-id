@@ -34,15 +34,21 @@ export function BulkPhotos() {
 
   return (
     <div className="max-w-2xl space-y-5">
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
-        <label className="block text-sm font-medium text-slate-700">Photo files</label>
+      <div className="card p-5">
+        <label htmlFor="photo-files" className="field-label">Photo files</label>
+        <div className="mt-2">
+          <label htmlFor="photo-files" className="btn-secondary btn-sm">
+            Choose files
+          </label>
+        </div>
         <input
+          id="photo-files"
           type="file"
           multiple
           accept="image/*"
           onChange={onPick}
           disabled={pending}
-          className="mt-2 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800"
+          className="hidden"
         />
 
         {files.length > 0 && (
@@ -62,7 +68,7 @@ export function BulkPhotos() {
           type="button"
           onClick={onUpload}
           disabled={pending || files.length === 0}
-          className="mt-4 cursor-pointer rounded-md bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          className="mt-4 btn-primary"
         >
           {pending ? "Uploading…" : "Upload & match"}
         </button>
@@ -73,7 +79,7 @@ export function BulkPhotos() {
       )}
 
       {result && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="card p-5">
           <p className="text-sm font-medium text-emerald-700">
             Matched {result.matched} of {result.total} file(s).
           </p>

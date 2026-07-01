@@ -105,7 +105,7 @@ export default function StudentTable({
     <>
       {/* Sticky bulk action bar */}
       {selected.size > 0 && (
-        <div className="sticky top-0 z-10 mt-5 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="card sticky top-0 z-10 mt-5 flex flex-wrap items-center gap-2 p-3">
           <span className="text-sm font-medium text-slate-700">{selected.size} selected</span>
 
           <button
@@ -117,7 +117,7 @@ export default function StudentTable({
                 return `Generated ${r.ok}, failed ${r.failed}.`;
               })
             }
-            className="cursor-pointer rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            className="btn-primary btn-sm"
           >
             Generate IDs
           </button>
@@ -127,7 +127,7 @@ export default function StudentTable({
               value={assignTemplateId}
               disabled={pending}
               onChange={(e) => setAssignTemplateId(e.target.value)}
-              className="cursor-pointer rounded-md border border-slate-300 px-2 py-1.5 text-sm disabled:opacity-50"
+              className="field-input w-auto"
             >
               {templates.length === 0 && <option value="">No templates</option>}
               {templates.map((t) => (
@@ -145,7 +145,7 @@ export default function StudentTable({
                   return `Template assigned to ${r.ok}.`;
                 })
               }
-              className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="btn-secondary btn-sm"
             >
               Assign
             </button>
@@ -160,7 +160,7 @@ export default function StudentTable({
                 return `Sent ${r.ok} for printing.`;
               })
             }
-            className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="btn-secondary btn-sm"
           >
             Send for printing
           </button>
@@ -170,7 +170,7 @@ export default function StudentTable({
               value={advanceTo}
               disabled={pending}
               onChange={(e) => setAdvanceTo(e.target.value as PipelineStatus)}
-              className="cursor-pointer rounded-md border border-slate-300 px-2 py-1.5 text-sm disabled:opacity-50"
+              className="field-input w-auto"
             >
               {ADVANCE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -187,7 +187,7 @@ export default function StudentTable({
                   return `Advanced ${r.ok}.`;
                 })
               }
-              className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="btn-secondary btn-sm"
             >
               Advance
             </button>
@@ -200,7 +200,7 @@ export default function StudentTable({
       )}
 
       {/* Table */}
-      <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="card mt-5 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
@@ -210,7 +210,7 @@ export default function StudentTable({
                   checked={allSelected}
                   onChange={toggleAll}
                   aria-label="Select all"
-                  className="cursor-pointer"
+                  className="cursor-pointer accent-teal-600"
                 />
               </th>
               <th className="px-4 py-3 font-medium">Photo</th>
@@ -243,7 +243,7 @@ export default function StudentTable({
                       checked={checked}
                       onChange={() => toggleOne(m.id)}
                       aria-label={`Select ${m.first_name}`}
-                      className="cursor-pointer"
+                      className="cursor-pointer accent-teal-600"
                     />
                   </td>
                   <td className="px-4 py-2">
@@ -284,14 +284,14 @@ export default function StudentTable({
                   <td className="space-x-3 px-4 py-2 text-right">
                     {m.pipeline_status === "not_generated" ? (
                       <form action={generateCard.bind(null, m.id)} className="inline">
-                        <button className="cursor-pointer text-slate-700 hover:underline">Generate</button>
+                        <button className="cursor-pointer text-slate-600 hover:text-slate-900">Generate</button>
                       </form>
                     ) : (
                       <>
                         <a
                           href={m.card_pdf_url ?? "#"}
                           target="_blank"
-                          className="text-slate-700 hover:underline"
+                          className="text-slate-600 hover:text-slate-900"
                         >
                           Download
                         </a>
@@ -304,16 +304,16 @@ export default function StudentTable({
                             )}
                             className="inline"
                           >
-                            <button className="cursor-pointer text-slate-700 hover:underline">Advance</button>
+                            <button className="cursor-pointer text-slate-600 hover:text-slate-900">Advance</button>
                           </form>
                         )}
                       </>
                     )}
-                    <Link href={`/members/${m.id}/edit`} className="text-slate-600 hover:underline">
+                    <Link href={`/members/${m.id}/edit`} className="text-slate-600 hover:text-slate-900">
                       Edit
                     </Link>
                     <form action={deleteMember.bind(null, m.id)} className="inline">
-                      <button className="cursor-pointer text-red-600 hover:underline">Delete</button>
+                      <button className="cursor-pointer text-red-600 hover:text-red-700">Delete</button>
                     </form>
                   </td>
                 </tr>

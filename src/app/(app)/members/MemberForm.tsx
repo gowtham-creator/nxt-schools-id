@@ -12,14 +12,23 @@ type Props = {
   submitLabel?: string;
 };
 
-const inputCls =
-  "mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900";
-const labelCls = "block text-sm font-medium text-slate-700";
+const inputCls = "field-input";
+const labelCls = "field-label";
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <label className={labelCls}>{label}</label>
+      <label htmlFor={htmlFor} className={labelCls}>
+        {label}
+      </label>
       {children}
     </div>
   );
@@ -53,17 +62,17 @@ export function MemberForm({ action, classes, member, submitLabel = "Save member
         <PhotoField initialUrl={member?.photo_url ?? null} />
 
         <div className="grid flex-1 grid-cols-2 gap-4">
-          <Field label="First name *">
-            <input name="first_name" required defaultValue={member?.first_name ?? ""} className={inputCls} />
+          <Field label="First name *" htmlFor="first_name">
+            <input id="first_name" name="first_name" required defaultValue={member?.first_name ?? ""} className={inputCls} />
           </Field>
-          <Field label="Last name">
-            <input name="last_name" defaultValue={member?.last_name ?? ""} className={inputCls} />
+          <Field label="Last name" htmlFor="last_name">
+            <input id="last_name" name="last_name" defaultValue={member?.last_name ?? ""} className={inputCls} />
           </Field>
-          <Field label={type === "student" ? "Admission No" : "Employee ID"}>
-            <input name="identifier" defaultValue={member?.identifier ?? ""} className={inputCls} />
+          <Field label={type === "student" ? "Admission No" : "Employee ID"} htmlFor="identifier">
+            <input id="identifier" name="identifier" defaultValue={member?.identifier ?? ""} className={inputCls} />
           </Field>
-          <Field label="Status">
-            <select name="status" defaultValue={member?.status ?? "active"} className={inputCls}>
+          <Field label="Status" htmlFor="status">
+            <select id="status" name="status" defaultValue={member?.status ?? "active"} className={inputCls}>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="archived">Archived</option>
@@ -76,8 +85,8 @@ export function MemberForm({ action, classes, member, submitLabel = "Save member
       <div className="grid grid-cols-3 gap-4">
         {type === "student" ? (
           <>
-            <Field label="Class">
-              <select name="class_id" defaultValue={member?.class_id ?? ""} className={inputCls}>
+            <Field label="Class" htmlFor="class_id">
+              <select id="class_id" name="class_id" defaultValue={member?.class_id ?? ""} className={inputCls}>
                 <option value="">— none —</option>
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -87,73 +96,70 @@ export function MemberForm({ action, classes, member, submitLabel = "Save member
                 ))}
               </select>
             </Field>
-            <Field label="Roll No">
-              <input name="roll_no" defaultValue={member?.roll_no ?? ""} className={inputCls} />
+            <Field label="Roll No" htmlFor="roll_no">
+              <input id="roll_no" name="roll_no" defaultValue={member?.roll_no ?? ""} className={inputCls} />
             </Field>
           </>
         ) : (
           <>
-            <Field label="Designation">
-              <input name="designation" defaultValue={member?.designation ?? ""} className={inputCls} />
+            <Field label="Designation" htmlFor="designation">
+              <input id="designation" name="designation" defaultValue={member?.designation ?? ""} className={inputCls} />
             </Field>
-            <Field label="Department">
-              <input name="department" defaultValue={member?.department ?? ""} className={inputCls} />
+            <Field label="Department" htmlFor="department">
+              <input id="department" name="department" defaultValue={member?.department ?? ""} className={inputCls} />
             </Field>
           </>
         )}
-        <Field label="Date of birth">
-          <input type="date" name="dob" defaultValue={member?.dob ?? ""} className={inputCls} />
+        <Field label="Date of birth" htmlFor="dob">
+          <input type="date" id="dob" name="dob" defaultValue={member?.dob ?? ""} className={inputCls} />
         </Field>
-        <Field label="Gender">
-          <select name="gender" defaultValue={member?.gender ?? ""} className={inputCls}>
+        <Field label="Gender" htmlFor="gender">
+          <select id="gender" name="gender" defaultValue={member?.gender ?? ""} className={inputCls}>
             <option value="">—</option>
             {GENDERS.map((g) => (
               <option key={g} value={g}>{g}</option>
             ))}
           </select>
         </Field>
-        <Field label="Blood group">
-          <select name="blood_group" defaultValue={member?.blood_group ?? ""} className={inputCls}>
+        <Field label="Blood group" htmlFor="blood_group">
+          <select id="blood_group" name="blood_group" defaultValue={member?.blood_group ?? ""} className={inputCls}>
             <option value="">—</option>
             {BLOOD_GROUPS.map((b) => (
               <option key={b} value={b}>{b}</option>
             ))}
           </select>
         </Field>
-        <Field label="Valid until">
-          <input type="date" name="valid_until" defaultValue={member?.valid_until ?? ""} className={inputCls} />
+        <Field label="Valid until" htmlFor="valid_until">
+          <input type="date" id="valid_until" name="valid_until" defaultValue={member?.valid_until ?? ""} className={inputCls} />
         </Field>
       </div>
 
       {/* Contact / guardian */}
       <div className="grid grid-cols-3 gap-4">
-        <Field label="Guardian name">
-          <input name="guardian_name" defaultValue={member?.guardian_name ?? ""} className={inputCls} />
+        <Field label="Guardian name" htmlFor="guardian_name">
+          <input id="guardian_name" name="guardian_name" defaultValue={member?.guardian_name ?? ""} className={inputCls} />
         </Field>
-        <Field label="Guardian phone">
-          <input name="guardian_phone" defaultValue={member?.guardian_phone ?? ""} className={inputCls} />
+        <Field label="Guardian phone" htmlFor="guardian_phone">
+          <input type="tel" id="guardian_phone" name="guardian_phone" defaultValue={member?.guardian_phone ?? ""} className={inputCls} />
         </Field>
-        <Field label="Phone">
-          <input name="phone" defaultValue={member?.phone ?? ""} className={inputCls} />
+        <Field label="Phone" htmlFor="phone">
+          <input type="tel" id="phone" name="phone" defaultValue={member?.phone ?? ""} className={inputCls} />
         </Field>
-        <Field label="Email">
-          <input type="email" name="email" defaultValue={member?.email ?? ""} className={inputCls} />
+        <Field label="Email" htmlFor="email">
+          <input type="email" id="email" name="email" defaultValue={member?.email ?? ""} className={inputCls} />
         </Field>
         <div className="col-span-2">
-          <Field label="Address">
-            <input name="address" defaultValue={member?.address ?? ""} className={inputCls} />
+          <Field label="Address" htmlFor="address">
+            <input id="address" name="address" defaultValue={member?.address ?? ""} className={inputCls} />
           </Field>
         </div>
       </div>
 
       <div className="flex gap-3">
-        <button
-          type="submit"
-          className="rounded-md bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-        >
+        <button type="submit" className="btn-primary">
           {submitLabel}
         </button>
-        <a href="/members" className="rounded-md border border-slate-300 px-5 py-2 text-sm text-slate-700 hover:bg-slate-50">
+        <a href="/members" className="btn-secondary">
           Cancel
         </a>
       </div>

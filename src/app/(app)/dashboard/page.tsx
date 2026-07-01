@@ -101,7 +101,7 @@ export default async function DashboardPage() {
 
       {/* Top row — headline totals */}
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-6">
+        <div className="card p-6">
           <div className="text-sm font-medium text-slate-500">
             Total Branches
           </div>
@@ -109,7 +109,7 @@ export default async function DashboardPage() {
             {totalBranches}
           </div>
         </div>
-        <div className="rounded-xl border border-teal-200 bg-teal-50 p-6">
+        <div className="rounded-xl border border-teal-200 bg-teal-50 p-6 shadow-sm">
           <div className="text-sm font-medium text-teal-700">
             Total Students
           </div>
@@ -125,7 +125,7 @@ export default async function DashboardPage() {
       </h2>
       <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {funnel.map((s) => (
-          <div key={s.label} className={`rounded-xl border p-5 ${s.card}`}>
+          <div key={s.label} className={`rounded-xl border p-5 shadow-sm ${s.card}`}>
             <div className={`text-3xl font-semibold ${s.value}`}>
               {s.done}
               <span className="text-xl font-normal text-slate-400">

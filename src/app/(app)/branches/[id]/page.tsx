@@ -76,7 +76,7 @@ export default async function BranchDetailPage({
       {/* Funnel */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {funnel.map((s) => (
-          <div key={s.label} className="rounded-xl border border-slate-200 bg-white p-4">
+          <div key={s.label} className="card p-4">
             <p className="text-2xl font-semibold text-slate-900">{s.value}</p>
             <p className="mt-1 text-sm text-slate-500">{s.label}</p>
           </div>
@@ -84,48 +84,55 @@ export default async function BranchDetailPage({
       </div>
 
       {/* Edit info */}
-      <div className="mt-8 max-w-2xl rounded-xl border border-slate-200 bg-white p-5">
+      <div className="mt-8 max-w-2xl card p-5">
         <h2 className="text-sm font-medium text-slate-700">Branch details</h2>
         <form
           action={updateBranch.bind(null, branch.id)}
           className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
         >
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs text-slate-500">Name</label>
+            <label htmlFor="name" className="field-label">Name</label>
             <input
+              id="name"
               name="name"
+              type="text"
               defaultValue={branch.name}
               required
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-500">Email</label>
+            <label htmlFor="email" className="field-label">Email</label>
             <input
+              id="email"
               name="email"
               type="email"
               defaultValue={branch.email ?? ""}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-500">Phone</label>
+            <label htmlFor="phone" className="field-label">Phone</label>
             <input
+              id="phone"
               name="phone"
+              type="tel"
               defaultValue={branch.phone ?? ""}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs text-slate-500">Address</label>
+            <label htmlFor="address" className="field-label">Address</label>
             <input
+              id="address"
               name="address"
+              type="text"
               defaultValue={branch.address ?? ""}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
           <div className="sm:col-span-2">
-            <button className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+            <button className="btn-primary">
               Save changes
             </button>
           </div>

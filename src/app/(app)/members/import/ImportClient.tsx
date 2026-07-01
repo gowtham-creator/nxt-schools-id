@@ -121,16 +121,16 @@ export function ImportClient() {
 
   return (
     <div className="max-w-3xl space-y-5">
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="card p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <label className="cursor-pointer rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+          <label className="btn-secondary">
             Choose CSV/Excel file
             <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={onFile} />
           </label>
           <button
             type="button"
             onClick={downloadTemplate}
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="btn-secondary"
           >
             Download template
           </button>
@@ -143,7 +143,7 @@ export function ImportClient() {
       </div>
 
       {preview.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="card overflow-hidden">
           <div className="border-b border-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
             Preview (first {preview.length} of {rows.length})
           </div>
@@ -165,17 +165,17 @@ export function ImportClient() {
             <button
               onClick={doImport}
               disabled={busy}
-              className="rounded-md bg-emerald-600 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="btn-primary"
             >
               {busy ? "Importing…" : `Import ${rows.length} members`}
             </button>
-            <a href="/members" className="text-sm text-slate-500 hover:underline">Cancel</a>
+            <a href="/members" className="btn-secondary">Cancel</a>
           </div>
         </div>
       )}
 
       {result && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="card p-5">
           <p className="text-sm">
             <span className="font-semibold text-emerald-700">{result.inserted} imported</span>
             {result.failed > 0 && <span className="ml-2 text-red-600">{result.failed} failed</span>}
@@ -186,7 +186,7 @@ export function ImportClient() {
             </ul>
           )}
           {result.inserted > 0 && (
-            <a href="/members" className="mt-3 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+            <a href="/members" className="btn-primary mt-3">
               View members
             </a>
           )}

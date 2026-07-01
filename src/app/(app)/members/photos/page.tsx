@@ -14,7 +14,7 @@ export default function BulkPhotosPage() {
             and attach automatically.
           </p>
         </div>
-        <Link href="/members" className="text-sm text-slate-500 hover:underline">
+        <Link href="/members" className="btn-secondary btn-sm">
           ← Back to members
         </Link>
       </div>

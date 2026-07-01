@@ -38,7 +38,7 @@ export default async function TemplatesPage({
           </p>
         </div>
         <form action={createBlankTemplate}>
-          <button className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+          <button className="btn-primary">
             + New template
           </button>
         </form>
@@ -54,7 +54,7 @@ export default async function TemplatesPage({
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((t) => (
-            <div key={t.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div key={t.id} className="card overflow-hidden transition hover:shadow-md">
               <div className="flex items-center justify-center bg-slate-100 p-4">
                 <div className="overflow-hidden rounded shadow-sm ring-1 ring-slate-200">
                   <CardSide
@@ -82,7 +82,7 @@ export default async function TemplatesPage({
                 </div>
                 <Link
                   href={`/templates/${t.id}/edit`}
-                  className="shrink-0 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+                  className="btn-secondary btn-sm shrink-0"
                 >
                   Edit
                 </Link>

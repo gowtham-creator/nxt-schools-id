@@ -45,89 +45,98 @@ export default async function SettingsPage({
 
       <form
         action={updateSchool}
-        className="mt-5 space-y-5 rounded-xl border border-slate-200 bg-white p-6"
+        className="card mt-5 space-y-5 p-6"
       >
         <div>
-          <label className="block text-sm font-medium text-slate-700">School name</label>
+          <label htmlFor="name" className="field-label">School name</label>
           <input
+            id="name"
             name="name"
             defaultValue={school?.name ?? ""}
             required
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="field-input"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Short name</label>
+          <label htmlFor="short_name" className="field-label">Short name</label>
           <input
+            id="short_name"
             name="short_name"
             defaultValue={school?.short_name ?? ""}
             placeholder="e.g. NXT"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="field-input"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Current academic year</label>
+          <label htmlFor="academic_year" className="field-label">Current academic year</label>
           <input
+            id="academic_year"
             name="academic_year"
             defaultValue={school?.academic_year ?? ""}
             placeholder="e.g. 2026-2027"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="field-input"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Address</label>
+          <label htmlFor="address" className="field-label">Address</label>
           <textarea
+            id="address"
             name="address"
             defaultValue={school?.address ?? ""}
             rows={3}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="field-input"
           />
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Phone</label>
+            <label htmlFor="phone" className="field-label">Phone</label>
             <input
+              id="phone"
               name="phone"
+              type="tel"
               defaultValue={school?.phone ?? ""}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Email</label>
+            <label htmlFor="email" className="field-label">Email</label>
             <input
+              id="email"
               name="email"
               type="email"
               defaultValue={school?.email ?? ""}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="field-input"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Primary color</label>
+            <label htmlFor="primary_color" className="field-label">Primary color</label>
             <div className="mt-1 flex items-center gap-3">
               <input
+                id="primary_color"
                 name="primary_color"
                 type="color"
                 defaultValue={school?.primary_color ?? DEFAULT_PRIMARY}
-                className="h-9 w-14 cursor-pointer rounded-md border border-slate-300 bg-white p-1"
+                className="h-10 w-16 cursor-pointer rounded-lg border border-slate-300 p-1"
               />
               <span className="text-xs text-slate-400">Used for card headers &amp; accents.</span>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Secondary color</label>
+            <label htmlFor="secondary_color" className="field-label">Secondary color</label>
             <div className="mt-1 flex items-center gap-3">
               <input
+                id="secondary_color"
                 name="secondary_color"
                 type="color"
                 defaultValue={school?.secondary_color ?? DEFAULT_SECONDARY}
-                className="h-9 w-14 cursor-pointer rounded-md border border-slate-300 bg-white p-1"
+                className="h-10 w-16 cursor-pointer rounded-lg border border-slate-300 p-1"
               />
               <span className="text-xs text-slate-400">Used for secondary elements.</span>
             </div>
@@ -135,7 +144,7 @@ export default async function SettingsPage({
         </div>
 
         <div className="border-t border-slate-200 pt-5">
-          <label className="block text-sm font-medium text-slate-700">Logo</label>
+          <label className="field-label">Logo</label>
           <div className="mt-2 flex items-center gap-4">
             {school?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -156,7 +165,7 @@ export default async function SettingsPage({
         </div>
 
         <div className="border-t border-slate-200 pt-5">
-          <button className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+          <button className="btn-primary">
             Save changes
           </button>
         </div>

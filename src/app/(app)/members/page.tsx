@@ -88,22 +88,13 @@ export default async function MembersPage({
           <p className="mt-1 text-sm text-slate-500">Students &amp; staff records.</p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/members/photos"
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
+          <Link href="/members/photos" className="btn-secondary">
             Bulk Photos
           </Link>
-          <Link
-            href="/members/import"
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
+          <Link href="/members/import" className="btn-secondary">
             Import CSV/Excel
           </Link>
-          <Link
-            href="/members/new"
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
+          <Link href="/members/new" className="btn-primary">
             + Add member
           </Link>
         </div>
@@ -128,7 +119,7 @@ export default async function MembersPage({
               href={tabHref(t.value)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${
                 active
-                  ? "bg-slate-900 text-white"
+                  ? "bg-teal-700 text-white"
                   : "border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
@@ -142,21 +133,24 @@ export default async function MembersPage({
       <form className="mt-3 flex flex-wrap gap-2">
         {activeStatus && <input type="hidden" name="status" value={activeStatus} />}
         <input
+          id="q"
           name="q"
+          type="search"
           defaultValue={sp.q ?? ""}
           placeholder="Search name or ID…"
-          className="w-64 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          className="field-input w-64"
         />
         <select
+          id="type"
           name="type"
           defaultValue={sp.type ?? ""}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="field-input w-auto"
         >
           <option value="">All types</option>
           <option value="student">Students</option>
           <option value="staff">Staff</option>
         </select>
-        <button className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+        <button className="btn-secondary">
           Filter
         </button>
       </form>

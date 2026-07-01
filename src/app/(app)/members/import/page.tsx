@@ -13,7 +13,7 @@ export default function ImportPage() {
             Bulk-add students &amp; staff from a CSV or Excel sheet.
           </p>
         </div>
-        <Link href="/members" className="text-sm text-slate-500 hover:underline">
+        <Link href="/members" className="btn-secondary btn-sm">
           ← Back to members
         </Link>
       </div>

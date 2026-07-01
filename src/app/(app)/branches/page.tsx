@@ -49,31 +49,48 @@ export default async function BranchesPage({
         <summary className="cursor-pointer text-sm font-medium text-slate-700">
           + Add branch
         </summary>
-        <form action={createBranch} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <input
-            name="name"
-            placeholder="Branch name (e.g. Main Campus)"
-            required
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
-          <input
-            name="email"
-            type="email"
-            placeholder="Email (optional)"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
-          <input
-            name="phone"
-            placeholder="Phone (optional)"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
-          <input
-            name="address"
-            placeholder="Address (optional)"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
+        <form action={createBranch} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="name" className="field-label">Branch name</label>
+            <input
+              id="name"
+              name="name"
+              placeholder="Branch name (e.g. Main Campus)"
+              required
+              className="field-input"
+            />
+          </div>
+          <div>
+            <label htmlFor="email" className="field-label">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="Email (optional)"
+              className="field-input"
+            />
+          </div>
+          <div>
+            <label htmlFor="phone" className="field-label">Phone</label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              placeholder="Phone (optional)"
+              className="field-input"
+            />
+          </div>
+          <div>
+            <label htmlFor="address" className="field-label">Address</label>
+            <input
+              id="address"
+              name="address"
+              placeholder="Address (optional)"
+              className="field-input"
+            />
+          </div>
           <div className="sm:col-span-2">
-            <button className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+            <button className="btn-primary">
               Add branch
             </button>
           </div>
@@ -81,7 +98,7 @@ export default async function BranchesPage({
       </details>
 
       {/* Table */}
-      <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="card mt-5 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
@@ -121,7 +138,7 @@ export default async function BranchesPage({
                   </span>
                 </td>
                 <td className="px-4 py-2 text-right">
-                  <Link href={`/branches/${b.id}`} className="text-slate-600 hover:underline">
+                  <Link href={`/branches/${b.id}`} className="text-slate-600 hover:text-slate-900">
                     Edit
                   </Link>
                   {b.status === "active" ? (
@@ -129,18 +146,18 @@ export default async function BranchesPage({
                       action={setBranchStatus.bind(null, b.id, "inactive")}
                       className="ml-3 inline"
                     >
-                      <button className="text-slate-600 hover:underline">Deactivate</button>
+                      <button className="btn-ghost btn-sm">Deactivate</button>
                     </form>
                   ) : (
                     <form
                       action={setBranchStatus.bind(null, b.id, "active")}
                       className="ml-3 inline"
                     >
-                      <button className="text-emerald-600 hover:underline">Activate</button>
+                      <button className="btn-ghost btn-sm">Activate</button>
                     </form>
                   )}
                   <form action={deleteBranch.bind(null, b.id)} className="ml-3 inline">
-                    <button className="text-red-600 hover:underline">Delete</button>
+                    <button className="btn-danger btn-sm">Delete</button>
                   </form>
                 </td>
               </tr>
