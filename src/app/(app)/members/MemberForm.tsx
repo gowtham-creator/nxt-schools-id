@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { BLOOD_GROUPS, GENDERS } from "@/lib/constants";
 import type { ClassRow, Member } from "@/lib/types";
+import { PhotoField } from "./PhotoField";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -27,36 +27,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export function MemberForm({ action, classes, member, submitLabel = "Save member" }: Props) {
   const [type, setType] = useState<"student" | "staff">(member?.member_type ?? "student");
-  const [photoUrl, setPhotoUrl] = useState<string>(member?.photo_url ?? "");
-  const [uploading, setUploading] = useState(false);
-  const [uploadErr, setUploadErr] = useState<string>("");
-
-  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setUploadErr("");
-    try {
-      const supabase = createClient();
-      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage
-        .from("photos")
-        .upload(path, file, { upsert: true, contentType: file.type });
-      if (error) throw error;
-      const { data } = supabase.storage.from("photos").getPublicUrl(path);
-      setPhotoUrl(data.publicUrl);
-    } catch (err) {
-      setUploadErr(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  }
 
   return (
     <form action={action} className="max-w-3xl space-y-6">
       <input type="hidden" name="member_type" value={type} />
-      <input type="hidden" name="photo_url" value={photoUrl} />
 
       {/* Type toggle */}
       <div className="inline-flex rounded-md border border-slate-300 p-0.5 text-sm">
@@ -76,21 +50,7 @@ export function MemberForm({ action, classes, member, submitLabel = "Save member
 
       {/* Photo + core */}
       <div className="flex gap-6">
-        <div className="shrink-0 text-center">
-          <div className="flex h-32 w-28 items-center justify-center overflow-hidden rounded-md border border-dashed border-slate-300 bg-slate-50">
-            {photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoUrl} alt="photo" className="h-full w-full object-cover" />
-            ) : (
-              <span className="px-2 text-center text-xs text-slate-400">No photo</span>
-            )}
-          </div>
-          <label className="mt-2 inline-block cursor-pointer text-xs font-medium text-slate-700 hover:underline">
-            {uploading ? "Uploading…" : "Upload photo"}
-            <input type="file" accept="image/*" className="hidden" onChange={onPhoto} disabled={uploading} />
-          </label>
-          {uploadErr && <p className="mt-1 text-xs text-red-600">{uploadErr}</p>}
-        </div>
+        <PhotoField initialUrl={member?.photo_url ?? null} />
 
         <div className="grid flex-1 grid-cols-2 gap-4">
           <Field label="First name *">
@@ -189,7 +149,6 @@ export function MemberForm({ action, classes, member, submitLabel = "Save member
       <div className="flex gap-3">
         <button
           type="submit"
-          disabled={uploading}
           className="rounded-md bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
           {submitLabel}

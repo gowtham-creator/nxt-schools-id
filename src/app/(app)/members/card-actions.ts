@@ -28,6 +28,95 @@ async function ctx() {
 const MEMBER_SELECT =
   "id,school_id,member_type,identifier,first_name,last_name,photo_url,dob,gender,blood_group,class_id,roll_no,designation,department,guardian_name,guardian_phone,phone,email,address,valid_from,valid_until,status,qr_token,branch_id,template_id,academic_year_id,pipeline_status,card_pdf_url,card_generated_at,bg_removed,extra,created_at,updated_at";
 
+/** The Supabase client type as returned by our async `createClient()`. */
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Core single-row pipeline: load member + template + class + school, render the
+ * CR80 PDF, upload it to the private `cards` bucket, save a 7-day signed URL and
+ * move the member to `generated`. Returns true on success, false on any caught
+ * error — so bulk callers can tally ok/failed without a redirect.
+ */
+async function generateOne(
+  supabase: SupabaseClient,
+  schoolId: string,
+  id: string,
+): Promise<boolean> {
+  try {
+    const { data: member, error: memberErr } = await supabase
+      .from("members")
+      .select(MEMBER_SELECT)
+      .eq("id", id)
+      .eq("school_id", schoolId)
+      .single<Member>();
+    if (memberErr || !member) return false;
+
+    // The member's own template, else the school's default id_template.
+    let template: IdTemplate | null = null;
+    if (member.template_id) {
+      const { data } = await supabase
+        .from("id_templates")
+        .select("*")
+        .eq("id", member.template_id)
+        .eq("school_id", schoolId)
+        .single<IdTemplate>();
+      template = data ?? null;
+    }
+    if (!template) {
+      const { data } = await supabase
+        .from("id_templates")
+        .select("*")
+        .eq("school_id", schoolId)
+        .eq("is_default", true)
+        .single<IdTemplate>();
+      template = data ?? null;
+    }
+    if (!template) return false;
+
+    const { data: classRow } = member.class_id
+      ? await supabase
+          .from("classes")
+          .select("name,section")
+          .eq("id", member.class_id)
+          .single<{ name: string; section: string | null }>()
+      : { data: null };
+
+    const { data: school } = await supabase
+      .from("schools")
+      .select("name,short_name,logo_url,primary_color,secondary_color")
+      .eq("id", schoolId)
+      .single<Partial<School>>();
+    if (!school) return false;
+
+    const pdf: Uint8Array = await renderCardPdf(template, member, classRow, school);
+
+    const path = `${schoolId}/${id}.pdf`;
+    const { error: uploadErr } = await supabase.storage
+      .from("cards")
+      .upload(path, pdf, { upsert: true, contentType: "application/pdf" });
+    if (uploadErr) return false;
+
+    const { data: signed } = await supabase.storage
+      .from("cards")
+      .createSignedUrl(path, 60 * 60 * 24 * 7);
+
+    const now = new (globalThis.Date)().toISOString();
+    const { error: updateErr } = await supabase
+      .from("members")
+      .update({
+        card_pdf_url: signed?.signedUrl ?? null,
+        card_generated_at: now,
+        pipeline_status: "generated" satisfies PipelineStatus,
+      })
+      .eq("id", id);
+    if (updateErr) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Renders the member's ID card to a CR80 PDF, stores it in the private `cards`
  * bucket, saves a 7-day signed URL on the member and moves it to `generated`.
@@ -36,76 +125,69 @@ export async function generateCard(id: string) {
   const { supabase, schoolId } = await ctx();
   if (!schoolId) redirect("/members?error=No+school+assigned+to+your+account");
 
-  const { data: member, error: memberErr } = await supabase
-    .from("members")
-    .select(MEMBER_SELECT)
-    .eq("id", id)
-    .eq("school_id", schoolId)
-    .single<Member>();
-  if (memberErr || !member) redirect("/members?error=Member+not+found");
-
-  // The member's own template, else the school's default id_template.
-  let template: IdTemplate | null = null;
-  if (member.template_id) {
-    const { data } = await supabase
-      .from("id_templates")
-      .select("*")
-      .eq("id", member.template_id)
-      .eq("school_id", schoolId)
-      .single<IdTemplate>();
-    template = data ?? null;
-  }
-  if (!template) {
-    const { data } = await supabase
-      .from("id_templates")
-      .select("*")
-      .eq("school_id", schoolId)
-      .eq("is_default", true)
-      .single<IdTemplate>();
-    template = data ?? null;
-  }
-  if (!template) redirect("/members?error=No+template+found.+Set+a+default+template+first");
-
-  const { data: classRow } = member.class_id
-    ? await supabase
-        .from("classes")
-        .select("name,section")
-        .eq("id", member.class_id)
-        .single<{ name: string; section: string | null }>()
-    : { data: null };
-
-  const { data: school } = await supabase
-    .from("schools")
-    .select("name,short_name,logo_url,primary_color,secondary_color")
-    .eq("id", schoolId)
-    .single<Partial<School>>();
-  if (!school) redirect("/members?error=School+not+found");
-
-  const pdf: Uint8Array = await renderCardPdf(template, member, classRow, school);
-
-  const path = `${schoolId}/${id}.pdf`;
-  const { error: uploadErr } = await supabase.storage
-    .from("cards")
-    .upload(path, pdf, { upsert: true, contentType: "application/pdf" });
-  if (uploadErr) redirect(`/members?error=${encodeURIComponent(uploadErr.message)}`);
-
-  const { data: signed } = await supabase.storage
-    .from("cards")
-    .createSignedUrl(path, 60 * 60 * 24 * 7);
-
-  const now = new (globalThis.Date)().toISOString();
-  const { error: updateErr } = await supabase
-    .from("members")
-    .update({
-      card_pdf_url: signed?.signedUrl ?? null,
-      card_generated_at: now,
-      pipeline_status: "generated" satisfies PipelineStatus,
-    })
-    .eq("id", id);
-  if (updateErr) redirect(`/members?error=${encodeURIComponent(updateErr.message)}`);
+  const ok = await generateOne(supabase, schoolId, id);
+  if (!ok) redirect("/members?error=Card+generation+failed");
 
   revalidatePath("/members");
   redirect("/members?ok=Card+generated");
+}
+
+/**
+ * Generates cards for many members in one go. Sequential is fine here — the
+ * headless render browser is a singleton. Returns ok/failed counts (no redirect).
+ */
+export async function bulkGenerate(ids: string[]): Promise<{ ok: number; failed: number }> {
+  const { supabase, schoolId } = await ctx();
+  if (!schoolId) return { ok: 0, failed: ids.length };
+
+  let ok = 0;
+  let failed = 0;
+  for (const id of ids) {
+    const success = await generateOne(supabase, schoolId, id);
+    if (success) ok += 1;
+    else failed += 1;
+  }
+
+  revalidatePath("/members");
+  return { ok, failed };
+}
+
+/** Assigns one template to many members (scoped to the caller's school). */
+export async function bulkAssignTemplate(
+  ids: string[],
+  templateId: string,
+): Promise<{ ok: number }> {
+  const { supabase, schoolId } = await ctx();
+  if (!schoolId) return { ok: 0 };
+
+  const { error } = await supabase
+    .from("members")
+    .update({ template_id: templateId })
+    .in("id", ids)
+    .eq("school_id", schoolId);
+  if (error) return { ok: 0 };
+
+  revalidatePath("/members");
+  return { ok: ids.length };
+}
+
+/** Sets the pipeline status on many members (scoped to the caller's school). */
+export async function bulkAdvance(
+  ids: string[],
+  to: PipelineStatus,
+): Promise<{ ok: number }> {
+  const { supabase, schoolId } = await ctx();
+  if (!schoolId) return { ok: 0 };
+
+  const { error } = await supabase
+    .from("members")
+    .update({ pipeline_status: to })
+    .in("id", ids)
+    .eq("school_id", schoolId);
+  if (error) return { ok: 0 };
+
+  revalidatePath("/members");
+  return { ok: ids.length };
 }
 
 /** Moves a member forward in the print pipeline (generated -> ... -> printed). */

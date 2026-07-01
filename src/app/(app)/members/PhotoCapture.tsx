@@ -7,8 +7,21 @@ import { createClient } from "@/lib/supabase/client";
 type Stage = "choose" | "camera" | "crop";
 
 type PhotoCaptureProps = {
-  /** Called with the public URL of the uploaded, cropped JPEG. */
-  onUploaded: (publicUrl: string) => void;
+  /**
+   * Called with the public URL of the uploaded, cropped JPEG. Only used when
+   * `uploadSelf` is not false (the component uploads to Supabase itself).
+   */
+  onUploaded?: (publicUrl: string) => void;
+  /**
+   * Called with the cropped JPEG Blob when `uploadSelf` is false, letting the
+   * caller upload it (e.g. via a server action) instead of the component.
+   */
+  onCaptured?: (blob: Blob) => void;
+  /**
+   * When false, the component hands the cropped Blob to `onCaptured` and skips
+   * its own Supabase upload. Defaults to true (upload here, call `onUploaded`).
+   */
+  uploadSelf?: boolean;
   /** Storage bucket name. Defaults to "photos". */
   bucket?: string;
   className?: string;
@@ -74,7 +87,13 @@ const btnPrimary =
 const btnGhost =
   "rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50";
 
-export function PhotoCapture({ onUploaded, bucket = "photos", className }: PhotoCaptureProps) {
+export function PhotoCapture({
+  onUploaded,
+  onCaptured,
+  uploadSelf = true,
+  bucket = "photos",
+  className,
+}: PhotoCaptureProps) {
   const [stage, setStage] = useState<Stage>("choose");
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
@@ -190,6 +209,11 @@ export function PhotoCapture({ onUploaded, bucket = "photos", className }: Photo
     setError("");
     try {
       const blob = await cropToJpegBlob(imageSrc, croppedArea);
+      if (!uploadSelf) {
+        onCaptured?.(blob);
+        reset();
+        return;
+      }
       const supabase = createClient();
       const path = `${crypto.randomUUID()}.jpg`;
       const { error: uploadError } = await supabase.storage
@@ -197,14 +221,14 @@ export function PhotoCapture({ onUploaded, bucket = "photos", className }: Photo
         .upload(path, blob, { contentType: "image/jpeg", upsert: false });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-      onUploaded(data.publicUrl);
+      onUploaded?.(data.publicUrl);
       reset();
     } catch (err) {
       setError(describeError(err, "Upload failed."));
     } finally {
       setBusy(false);
     }
-  }, [imageSrc, croppedArea, bucket, onUploaded, reset]);
+  }, [imageSrc, croppedArea, uploadSelf, onCaptured, bucket, onUploaded, reset]);
 
   return (
     <div className={className}>
