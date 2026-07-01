@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { renderCardPdf } from "@/lib/render/pdf";
+import { logAudit } from "@/lib/audit";
 import type { IdTemplate, Member, PipelineStatus, School } from "@/lib/types";
 
 /**
@@ -122,11 +123,29 @@ async function generateOne(
  * bucket, saves a 7-day signed URL on the member and moves it to `generated`.
  */
 export async function generateCard(id: string) {
-  const { supabase, schoolId } = await ctx();
+  const { supabase, schoolId, user } = await ctx();
   if (!schoolId) redirect("/members?error=No+school+assigned+to+your+account");
 
-  const ok = await generateOne(supabase, schoolId, id);
+  // Belt-and-braces: generateOne already catches render/upload/update failures
+  // and returns false, but wrap it so any unexpected throw is surfaced as a
+  // redirect('/members?error=...') rather than an unhandled Server Action crash.
+  // The redirect() calls stay OUTSIDE this try so their NEXT_REDIRECT control
+  // signal is never swallowed.
+  let ok = false;
+  try {
+    ok = await generateOne(supabase, schoolId, id);
+  } catch {
+    ok = false;
+  }
   if (!ok) redirect("/members?error=Card+generation+failed");
+
+  await logAudit(supabase, {
+    schoolId,
+    actorId: user.id,
+    action: "card.generated",
+    targetType: "member",
+    targetId: id,
+  });
 
   revalidatePath("/members");
   redirect("/members?ok=Card+generated");
@@ -137,7 +156,7 @@ export async function generateCard(id: string) {
  * headless render browser is a singleton. Returns ok/failed counts (no redirect).
  */
 export async function bulkGenerate(ids: string[]): Promise<{ ok: number; failed: number }> {
-  const { supabase, schoolId } = await ctx();
+  const { supabase, schoolId, user } = await ctx();
   if (!schoolId) return { ok: 0, failed: ids.length };
 
   let ok = 0;
@@ -146,6 +165,16 @@ export async function bulkGenerate(ids: string[]): Promise<{ ok: number; failed:
     const success = await generateOne(supabase, schoolId, id);
     if (success) ok += 1;
     else failed += 1;
+  }
+
+  if (ok > 0) {
+    await logAudit(supabase, {
+      schoolId,
+      actorId: user.id,
+      action: "card.generated",
+      targetType: "member",
+      meta: { count: ok, failed, ids },
+    });
   }
 
   revalidatePath("/members");
@@ -192,12 +221,22 @@ export async function bulkAdvance(
 
 /** Moves a member forward in the print pipeline (generated -> ... -> printed). */
 export async function advanceStatus(id: string, to: PipelineStatus) {
-  const { supabase } = await ctx();
+  const { supabase, schoolId, user } = await ctx();
   const { error } = await supabase
     .from("members")
     .update({ pipeline_status: to })
     .eq("id", id);
   if (error) redirect(`/members?error=${encodeURIComponent(error.message)}`);
+
+  await logAudit(supabase, {
+    schoolId,
+    actorId: user.id,
+    action: "card.status_changed",
+    targetType: "member",
+    targetId: id,
+    meta: { to },
+  });
+
   revalidatePath("/members");
   redirect("/members?ok=Updated");
 }

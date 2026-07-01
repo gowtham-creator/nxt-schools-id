@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 import { memberSchema, classSchema, formToObject } from "@/lib/validators";
 
 async function ctx() {
@@ -20,7 +21,7 @@ async function ctx() {
 }
 
 export async function createMember(fd: FormData) {
-  const { supabase, schoolId } = await ctx();
+  const { supabase, schoolId, user } = await ctx();
   if (!schoolId) redirect("/members?error=No+school+assigned+to+your+account");
   const r = memberSchema.safeParse(formToObject(fd));
   if (!r.success)
@@ -29,6 +30,20 @@ export async function createMember(fd: FormData) {
     .from("members")
     .insert({ ...r.data, school_id: schoolId });
   if (error) redirect(`/members/new?error=${encodeURIComponent(error.message)}`);
+
+  await logAudit(supabase, {
+    schoolId,
+    actorId: user.id,
+    action: "member.created",
+    targetType: "member",
+    meta: {
+      member_type: r.data.member_type,
+      identifier: r.data.identifier ?? null,
+      first_name: r.data.first_name,
+      last_name: r.data.last_name ?? null,
+    },
+  });
+
   revalidatePath("/members");
   redirect("/members?ok=Member+added");
 }
@@ -46,8 +61,15 @@ export async function updateMember(id: string, fd: FormData) {
 }
 
 export async function deleteMember(id: string) {
-  const { supabase } = await ctx();
+  const { supabase, schoolId, user } = await ctx();
   await supabase.from("members").delete().eq("id", id);
+  await logAudit(supabase, {
+    schoolId,
+    actorId: user.id,
+    action: "member.deleted",
+    targetType: "member",
+    targetId: id,
+  });
   revalidatePath("/members");
 }
 

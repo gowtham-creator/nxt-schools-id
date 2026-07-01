@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getDashboardAnalytics } from "@/lib/analytics";
 import type { PipelineStatus } from "@/lib/types";
 import DashboardView, { type DashboardMetrics } from "./DashboardView";
 
@@ -17,6 +18,20 @@ const SENT_STATUSES: PipelineStatus[] = ["sent_for_printing", "printed"];
 export default async function DashboardPage() {
   const supabase = await createClient();
 
+  // Resolve the caller's school (mirrors the members ctx() helper) so the
+  // analytics selects can be scoped explicitly on top of RLS.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase
+        .from("app_users")
+        .select("school_id")
+        .eq("id", user.id)
+        .single()
+    : { data: null };
+  const schoolId = (profile?.school_id ?? null) as string | null;
+
   // Fresh head-count query against members for each funnel filter.
   const members = () =>
     supabase.from("members").select("*", { count: "exact", head: true });
@@ -28,6 +43,7 @@ export default async function DashboardPage() {
     idGenerated,
     sentForPrinting,
     printed,
+    analytics,
   ] = await Promise.all([
     supabase
       .from("branches")
@@ -46,6 +62,7 @@ export default async function DashboardPage() {
     members()
       .eq("pipeline_status", "printed")
       .then((r) => r.count ?? 0),
+    getDashboardAnalytics(supabase, schoolId),
   ]);
 
   // Serializable snapshot of the exact values computed above.
@@ -59,5 +76,5 @@ export default async function DashboardPage() {
     printed,
   };
 
-  return <DashboardView metrics={metrics} />;
+  return <DashboardView metrics={metrics} analytics={analytics} />;
 }

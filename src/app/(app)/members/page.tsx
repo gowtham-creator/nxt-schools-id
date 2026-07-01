@@ -5,6 +5,12 @@ import StudentTable, { type MemberRow } from "./StudentTable";
 
 export const dynamic = "force-dynamic";
 
+// Card generation runs as a Server Action on this page (generateCard /
+// bulkGenerate render a headless-Chromium PDF, upload it, then update the row).
+// Vercel's default function timeout can be too tight for a cold Chromium launch,
+// so give all Server Actions on this page headroom. Node runtime only.
+export const maxDuration = 60;
+
 /** Pipeline status tabs. `value: null` means "All" (no pipeline_status filter). */
 const PIPELINE_TABS: { label: string; value: PipelineStatus | null }[] = [
   { label: "All", value: null },

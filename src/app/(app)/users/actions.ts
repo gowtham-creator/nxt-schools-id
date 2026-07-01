@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import type { AppRole } from "@/lib/types";
 
 const ROLES: AppRole[] = ["super_admin", "admin", "operator"];
@@ -48,6 +49,15 @@ export async function inviteUser(fd: FormData) {
     redirect("/users?error=" + encodeURIComponent(updateError.message));
   }
 
+  await logAudit(admin, {
+    schoolId: me.school_id,
+    actorId: me.id,
+    action: "user.invited",
+    targetType: "user",
+    targetId: data.user.id,
+    meta: { email, role, full_name },
+  });
+
   revalidatePath("/users");
   redirect("/users?ok=User+created");
 }
@@ -82,6 +92,15 @@ export async function setUserRole(id: string, roleOrFd: AppRole | FormData) {
     redirect("/users?error=" + encodeURIComponent(error.message));
   }
 
+  await logAudit(admin, {
+    schoolId: me.school_id,
+    actorId: me.id,
+    action: "user.role_changed",
+    targetType: "user",
+    targetId: id,
+    meta: { role },
+  });
+
   revalidatePath("/users");
   redirect("/users?ok=Role+updated");
 }
@@ -109,6 +128,14 @@ export async function deleteUser(id: string) {
   if (error) {
     redirect("/users?error=" + encodeURIComponent(error.message));
   }
+
+  await logAudit(admin, {
+    schoolId: me.school_id,
+    actorId: me.id,
+    action: "user.removed",
+    targetType: "user",
+    targetId: id,
+  });
 
   revalidatePath("/users");
   redirect("/users?ok=User+removed");

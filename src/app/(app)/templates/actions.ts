@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 import { CARD_CR80 } from "@/lib/constants";
 import type { TemplateSide } from "@/lib/types";
 
@@ -40,6 +41,15 @@ export async function createBlankTemplate() {
     .single();
   if (error || !data)
     redirect(`/templates?error=${encodeURIComponent(error?.message ?? "Create failed")}`);
+
+  await logAudit(supabase, {
+    schoolId,
+    actorId: user.id,
+    action: "template.created",
+    targetType: "template",
+    targetId: data.id,
+  });
+
   redirect(`/templates/${data.id}/edit`);
 }
 
@@ -60,8 +70,15 @@ export async function saveTemplate(
 }
 
 export async function deleteTemplate(id: string) {
-  const { supabase } = await ctx();
+  const { supabase, schoolId, user } = await ctx();
   await supabase.from("id_templates").delete().eq("id", id);
+  await logAudit(supabase, {
+    schoolId,
+    actorId: user.id,
+    action: "template.deleted",
+    targetType: "template",
+    targetId: id,
+  });
   revalidatePath("/templates");
 }
 

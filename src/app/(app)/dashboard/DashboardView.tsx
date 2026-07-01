@@ -5,6 +5,8 @@ import { motion, useReducedMotion, type Variants } from "framer-motion";
 import {
   Building2,
   Users,
+  UserCog,
+  Camera,
   ImageUp,
   IdCard,
   Send,
@@ -12,6 +14,11 @@ import {
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
+import type { AnalyticsData } from "@/lib/analytics";
+import StatusDonut from "./charts/StatusDonut";
+import GeneratedAreaChart from "./charts/GeneratedAreaChart";
+import BranchBarChart from "./charts/BranchBarChart";
+import ClassBarChart from "./charts/ClassBarChart";
 
 /** Serializable metrics computed by the server component. */
 export interface DashboardMetrics {
@@ -33,7 +40,7 @@ export interface DashboardMetrics {
 
 interface Hero {
   label: string;
-  value: number;
+  display: string;
   icon: LucideIcon;
 }
 
@@ -46,17 +53,39 @@ interface Stage {
 
 export default function DashboardView({
   metrics,
+  analytics,
 }: {
   metrics: DashboardMetrics;
+  analytics: AnalyticsData;
 }) {
   const reduce = useReducedMotion();
+
+  const pctText = (n: number): string => `${Math.round(n * 100)}%`;
 
   const pct = (n: number): number =>
     metrics.total > 0 ? Math.round((n / metrics.total) * 100) : 0;
 
   const heroes: Hero[] = [
-    { label: "Total Branches", value: metrics.branches, icon: Building2 },
-    { label: "Total Students", value: metrics.students, icon: Users },
+    {
+      label: "Total Branches",
+      display: String(metrics.branches),
+      icon: Building2,
+    },
+    {
+      label: "Total Students",
+      display: String(analytics.kpis.totalStudents),
+      icon: Users,
+    },
+    {
+      label: "Total Staff",
+      display: String(analytics.kpis.totalStaff),
+      icon: UserCog,
+    },
+    {
+      label: "Photo Coverage",
+      display: pctText(analytics.kpis.photoCoverage),
+      icon: Camera,
+    },
   ];
 
   const stages: Stage[] = [
@@ -96,7 +125,7 @@ export default function DashboardView({
       </motion.div>
 
       {/* Hero stat cards */}
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {heroes.map((h) => (
           <motion.div
             key={h.label}
@@ -108,7 +137,7 @@ export default function DashboardView({
             </div>
             <div className="min-w-0">
               <div className="text-3xl font-bold leading-none text-slate-900">
-                {h.value}
+                {h.display}
               </div>
               <div className="mt-1.5 text-sm font-medium text-slate-500">
                 {h.label}
@@ -175,6 +204,29 @@ export default function DashboardView({
             ) : null}
           </Fragment>
         ))}
+      </div>
+
+      {/* Analytics */}
+      <motion.h2
+        variants={item}
+        className="mt-8 text-sm font-medium text-slate-500"
+      >
+        Analytics
+      </motion.h2>
+
+      <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <motion.div variants={item}>
+          <StatusDonut data={analytics.statusBreakdown} />
+        </motion.div>
+        <motion.div variants={item}>
+          <GeneratedAreaChart data={analytics.generatedByDay} />
+        </motion.div>
+        <motion.div variants={item}>
+          <BranchBarChart data={analytics.perBranch} />
+        </motion.div>
+        <motion.div variants={item}>
+          <ClassBarChart data={analytics.perClass} />
+        </motion.div>
       </div>
     </motion.div>
   );
