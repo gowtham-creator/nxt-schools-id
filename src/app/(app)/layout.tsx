@@ -6,14 +6,14 @@ import type { AppRole } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const NAV = [
+const NAV: { href: string; label: string; roles?: AppRole[] }[] = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/branches", label: "Branches" },
-  { href: "/academic-years", label: "Academic Years" },
+  { href: "/branches", label: "Branches", roles: ["super_admin", "admin"] },
+  { href: "/academic-years", label: "Academic Years", roles: ["super_admin", "admin"] },
   { href: "/members", label: "Members" },
-  { href: "/templates", label: "Templates" },
-  { href: "/cards", label: "Cards" },
-  { href: "/settings", label: "Settings" },
+  { href: "/templates", label: "Templates", roles: ["super_admin", "admin"] },
+  { href: "/users", label: "Users", roles: ["super_admin", "admin"] },
+  { href: "/settings", label: "Settings", roles: ["super_admin", "admin"] },
 ];
 
 export default async function AppLayout({
@@ -40,7 +40,7 @@ export default async function AppLayout({
       <aside className="hidden w-60 shrink-0 border-r border-slate-200 bg-white p-4 md:block">
         <div className="px-2 text-lg font-semibold text-slate-900">Nxt Schools ID</div>
         <nav className="mt-6 space-y-1">
-          {NAV.map((n) => (
+          {NAV.filter((n) => !n.roles || n.roles.includes(role)).map((n) => (
             <Link
               key={n.href}
               href={n.href}

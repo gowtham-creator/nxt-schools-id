@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MEMBER_TYPE_LABELS } from "@/lib/constants";
 import type { PipelineStatus } from "@/lib/types";
 import { deleteMember } from "./actions";
+import { generateCard, advanceStatus } from "./card-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ type Row = {
   roll_no: string | null;
   status: string;
   pipeline_status: PipelineStatus;
+  card_pdf_url: string | null;
   template_id: string | null;
   classes: { name: string; section: string | null } | null;
   id_templates: { name: string } | null;
@@ -51,6 +53,13 @@ const PIPELINE_VALUES: PipelineStatus[] = [
   "printed",
 ];
 
+/** Next pipeline step for the "Advance" button. `printed` is terminal (omitted). */
+const NEXT_STATUS: Partial<Record<PipelineStatus, PipelineStatus>> = {
+  generated: "print_approval_pending",
+  print_approval_pending: "sent_for_printing",
+  sent_for_printing: "printed",
+};
+
 export default async function MembersPage({
   searchParams,
 }: {
@@ -74,7 +83,7 @@ export default async function MembersPage({
   let query = supabase
     .from("members")
     .select(
-      "id,member_type,identifier,first_name,last_name,photo_url,roll_no,status,pipeline_status,template_id,classes(name,section),id_templates(name)",
+      "id,member_type,identifier,first_name,last_name,photo_url,roll_no,status,pipeline_status,card_pdf_url,template_id,classes(name,section),id_templates(name)",
     )
     .order("created_at", { ascending: false })
     .limit(300);
@@ -239,11 +248,38 @@ export default async function MembersPage({
                       {badge.label}
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="space-x-3 px-4 py-2 text-right">
+                    {m.pipeline_status === "not_generated" ? (
+                      <form action={generateCard.bind(null, m.id)} className="inline">
+                        <button className="text-slate-700 hover:underline">Generate</button>
+                      </form>
+                    ) : (
+                      <>
+                        <a
+                          href={m.card_pdf_url ?? "#"}
+                          target="_blank"
+                          className="text-slate-700 hover:underline"
+                        >
+                          Download
+                        </a>
+                        {NEXT_STATUS[m.pipeline_status] && (
+                          <form
+                            action={advanceStatus.bind(
+                              null,
+                              m.id,
+                              NEXT_STATUS[m.pipeline_status]!,
+                            )}
+                            className="inline"
+                          >
+                            <button className="text-slate-700 hover:underline">Advance</button>
+                          </form>
+                        )}
+                      </>
+                    )}
                     <Link href={`/members/${m.id}/edit`} className="text-slate-600 hover:underline">
                       Edit
                     </Link>
-                    <form action={deleteMember.bind(null, m.id)} className="ml-3 inline">
+                    <form action={deleteMember.bind(null, m.id)} className="inline">
                       <button className="text-red-600 hover:underline">Delete</button>
                     </form>
                   </td>
