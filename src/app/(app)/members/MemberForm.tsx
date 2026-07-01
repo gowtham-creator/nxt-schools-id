@@ -42,14 +42,14 @@ export function MemberForm({ action, classes, member, submitLabel = "Save member
       <input type="hidden" name="member_type" value={type} />
 
       {/* Type toggle */}
-      <div className="inline-flex rounded-md border border-slate-300 p-0.5 text-sm">
+      <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 text-sm shadow-sm">
         {(["student", "staff"] as const).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setType(t)}
-            className={`rounded px-4 py-1.5 capitalize ${
-              type === t ? "bg-slate-900 text-white" : "text-slate-600"
+            className={`cursor-pointer rounded-md px-4 py-1.5 font-medium capitalize transition-colors duration-150 ${
+              type === t ? "bg-teal-700 text-white" : "text-slate-600 hover:text-slate-900"
             }`}
           >
             {t}

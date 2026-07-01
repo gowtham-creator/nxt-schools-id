@@ -82,11 +82,6 @@ function describeError(err: unknown, fallback: string): string {
   return fallback;
 }
 
-const btnPrimary =
-  "rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50";
-const btnGhost =
-  "rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50";
-
 export function PhotoCapture({
   onUploaded,
   onCaptured,
@@ -234,10 +229,10 @@ export function PhotoCapture({
     <div className={className}>
       {stage === "choose" && (
         <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={startCamera} disabled={busy} className={btnPrimary}>
+          <button type="button" onClick={startCamera} disabled={busy} className="btn-primary btn-sm">
             {busy ? "Starting camera…" : "Use webcam"}
           </button>
-          <label className={`${btnGhost} cursor-pointer`}>
+          <label className="btn-secondary btn-sm">
             Upload file
             <input
               type="file"
@@ -251,72 +246,82 @@ export function PhotoCapture({
       )}
 
       {stage === "camera" && (
-        <div className="space-y-3">
-          <div className="relative mx-auto w-full max-w-sm overflow-hidden rounded-md bg-black">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className="h-auto w-full"
-            />
-          </div>
-          <div className="flex gap-3">
-            <button type="button" onClick={capture} className={btnPrimary}>
-              Capture
-            </button>
-            <button type="button" onClick={reset} className={btnGhost}>
-              Cancel
-            </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+          <div className="card w-full max-w-md space-y-4 p-5 text-left">
+            <h3 className="text-base font-semibold text-slate-900">Take photo</h3>
+            <div className="relative mx-auto w-full overflow-hidden rounded-lg bg-black">
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="h-auto w-full"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={capture} className="btn-primary">
+                Capture
+              </button>
+              <button type="button" onClick={reset} className="btn-secondary">
+                Cancel
+              </button>
+            </div>
+            {error && <p className="text-xs font-medium text-red-600">{error}</p>}
           </div>
         </div>
       )}
 
       {stage === "crop" && imageSrc && (
-        <div className="space-y-3">
-          <div className="relative mx-auto h-80 w-full max-w-sm overflow-hidden rounded-md bg-slate-100">
-            <Cropper
-              image={imageSrc}
-              crop={crop}
-              zoom={zoom}
-              aspect={PASSPORT_ASPECT}
-              cropShape="rect"
-              showGrid
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onCropComplete={onCropComplete}
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500">Zoom</span>
-            <input
-              type="range"
-              min={1}
-              max={3}
-              step={0.01}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="flex-1"
-              aria-label="Zoom"
-            />
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={confirm}
-              disabled={busy || !croppedArea}
-              className={btnPrimary}
-            >
-              {busy ? "Uploading…" : "Use photo"}
-            </button>
-            <button type="button" onClick={reset} disabled={busy} className={btnGhost}>
-              Retake
-            </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+          <div className="card w-full max-w-md space-y-4 p-5 text-left">
+            <h3 className="text-base font-semibold text-slate-900">Crop photo</h3>
+            <div className="relative mx-auto h-80 w-full overflow-hidden rounded-lg bg-slate-100">
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={PASSPORT_ASPECT}
+                cropShape="rect"
+                showGrid
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-slate-600">Zoom</span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="flex-1 cursor-pointer accent-teal-600"
+                aria-label="Zoom"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={confirm}
+                disabled={busy || !croppedArea}
+                className="btn-primary"
+              >
+                {busy ? "Uploading…" : "Use photo"}
+              </button>
+              <button type="button" onClick={reset} disabled={busy} className="btn-secondary">
+                Retake
+              </button>
+            </div>
+            {error && <p className="text-xs font-medium text-red-600">{error}</p>}
           </div>
         </div>
       )}
 
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && stage === "choose" && (
+        <p className="mt-2 text-xs font-medium text-red-600">{error}</p>
+      )}
     </div>
   );
 }

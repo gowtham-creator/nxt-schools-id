@@ -35,25 +35,35 @@ export default async function NewMemberPage({
         />
       </div>
 
-      <details className="mt-8 max-w-md rounded-lg border border-slate-200 bg-white p-4">
-        <summary className="cursor-pointer text-sm font-medium text-slate-700">
+      <details className="card mt-8 max-w-md p-4">
+        <summary className="cursor-pointer text-sm font-medium text-slate-600 transition-colors duration-150 hover:text-slate-900">
           + Add a class
         </summary>
-        <form action={createClass} className="mt-3 grid grid-cols-3 gap-2">
-          <input
-            name="name"
-            placeholder="Class (e.g. Grade 5)"
-            required
-            className="col-span-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
-          <input
-            name="section"
-            placeholder="Section (A)"
-            className="col-span-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
-          <button className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-            Add
-          </button>
+        <form action={createClass} className="mt-4 grid grid-cols-3 items-end gap-3">
+          <div className="col-span-1">
+            <label htmlFor="class_name" className="field-label">
+              Class
+            </label>
+            <input
+              id="class_name"
+              name="name"
+              placeholder="e.g. Grade 5"
+              required
+              className="field-input"
+            />
+          </div>
+          <div className="col-span-1">
+            <label htmlFor="class_section" className="field-label">
+              Section
+            </label>
+            <input
+              id="class_section"
+              name="section"
+              placeholder="e.g. A"
+              className="field-input"
+            />
+          </div>
+          <button className="btn-primary btn-sm justify-self-start">Add</button>
         </form>
       </details>
     </div>
