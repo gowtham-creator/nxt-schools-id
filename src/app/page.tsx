@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
+import LandingView from "./LandingView";
 
+// Public marketing landing. Protected areas live under (app) and guard
+// themselves; the middleware allows "/" through for unauthenticated visitors.
 export default function Home() {
-  // Authenticated users land on the dashboard; the middleware bounces
-  // unauthenticated visitors to /login.
-  redirect("/dashboard");
+  return <LandingView />;
 }
