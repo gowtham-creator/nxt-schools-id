@@ -38,11 +38,19 @@ type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
  * move the member to `generated`. Returns true on success, false on any caught
  * error — so bulk callers can tally ok/failed without a redirect.
  */
+/**
+ * Reason for the most recent generateOne failure (per lambda instance).
+ * Surfaced (truncated) in the /members error banner — serverless render
+ * failures are otherwise invisible without log streaming.
+ */
+let lastGenerateError: string | null = null;
+
 async function generateOne(
   supabase: SupabaseClient,
   schoolId: string,
   id: string,
 ): Promise<boolean> {
+  lastGenerateError = null;
   try {
     const { data: member, error: memberErr } = await supabase
       .from("members")
@@ -95,7 +103,10 @@ async function generateOne(
     const { error: uploadErr } = await supabase.storage
       .from("cards")
       .upload(path, pdf, { upsert: true, contentType: "application/pdf" });
-    if (uploadErr) return false;
+    if (uploadErr) {
+      lastGenerateError = `upload: ${uploadErr.message}`;
+      return false;
+    }
 
     const { data: signed } = await supabase.storage
       .from("cards")
@@ -110,10 +121,14 @@ async function generateOne(
         pipeline_status: "generated" satisfies PipelineStatus,
       })
       .eq("id", id);
-    if (updateErr) return false;
+    if (updateErr) {
+      lastGenerateError = `db update: ${updateErr.message}`;
+      return false;
+    }
 
     return true;
-  } catch {
+  } catch (err) {
+    lastGenerateError = err instanceof Error ? err.message : String(err);
     return false;
   }
 }
@@ -137,7 +152,10 @@ export async function generateCard(id: string) {
   } catch {
     ok = false;
   }
-  if (!ok) redirect("/members?error=Card+generation+failed");
+  if (!ok) {
+    const reason = `Card generation failed — ${lastGenerateError ?? "unknown"}`.slice(0, 180);
+    redirect(`/members?error=${encodeURIComponent(reason)}`);
+  }
 
   await logAudit(supabase, {
     schoolId,

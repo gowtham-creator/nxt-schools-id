@@ -16,6 +16,7 @@ const isServerless = (): boolean =>
 
 async function launch(): Promise<Browser> {
   if (isServerless()) {
+    chromium.setGraphicsMode = false; // skip WebGL init; not needed for print
     return puppeteer.launch({
       args: chromium.args,
       executablePath: await chromium.executablePath(),
