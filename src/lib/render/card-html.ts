@@ -28,6 +28,15 @@ const esc = (s: string): string =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
+/**
+ * Escape a CSS declaration list for a double-quoted style="" attribute.
+ * Critical for `background-image:url("data:image/svg+xml,…")` — without this
+ * the url's own quotes terminate the attribute and the background is dropped.
+ * Entities are decoded by the HTML parser before CSS parsing, so the CSS
+ * engine still sees the real quotes.
+ */
+const attr = (s: string): string => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+
 /** Shared base geometry declarations (mirror of CardElement `base`). */
 function baseDecls(el: TemplateElement, scale: number, z: number): string[] {
   const d: string[] = [
@@ -62,7 +71,7 @@ function elementHtml(
           `border:${mmToPx(el.borderWidth, scale)}px solid ${el.borderColor ?? "#000000"}`,
         );
       if (el.radius) d.push(`border-radius:${mmToPx(el.radius, scale)}px`);
-      return `<div ${idAttr} style="${d.join(";")}"></div>`;
+      return `<div ${idAttr} style="${attr(d.join(";"))}"></div>`;
     }
 
     case "text":
@@ -98,9 +107,9 @@ function elementHtml(
       if (el.letterSpacing != null)
         inner.push(`letter-spacing:${mmToPx(el.letterSpacing, scale)}px`);
       if (el.uppercase) inner.push("text-transform:uppercase");
-      return `<div ${idAttr} style="${outer.join(";")}"><div style="${inner.join(";")}">${esc(
-        value,
-      )}</div></div>`;
+      return `<div ${idAttr} style="${attr(outer.join(";"))}"><div style="${attr(
+        inner.join(";"),
+      )}">${esc(value)}</div></div>`;
     }
 
     case "image": {
@@ -115,7 +124,7 @@ function elementHtml(
             el.fit ?? "cover"
           };object-position:${el.objectPosition ?? "center"};display:block"/>`
         : "";
-      return `<div ${idAttr} style="${d.join(";")}">${img}</div>`;
+      return `<div ${idAttr} style="${attr(d.join(";"))}">${img}</div>`;
     }
 
     case "qr":
@@ -135,7 +144,7 @@ function elementHtml(
             src,
           )}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"/>`
         : "";
-      return `<div ${idAttr} style="${d.join(";")}">${img}</div>`;
+      return `<div ${idAttr} style="${attr(d.join(";"))}">${img}</div>`;
     }
 
     default:
@@ -178,5 +187,5 @@ export function cardSideToHtml(
   const els = side.elements
     .map((el, i) => (el.hidden && !renderHidden ? "" : elementHtml(el, data, scale, i)))
     .join("");
-  return `<div data-card-side="" style="${root.join(";")}">${els}</div>`;
+  return `<div data-card-side="" style="${attr(root.join(";"))}">${els}</div>`;
 }

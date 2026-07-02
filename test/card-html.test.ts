@@ -107,9 +107,12 @@ describe("cardSideToHtml", () => {
       H,
       SCALE,
     );
+    // Quotes must be entity-escaped inside the double-quoted style attribute —
+    // raw url("…") quotes would terminate the attribute and drop the background.
     expect(html).toContain(
-      'background-image:url("https://cdn.example.com/bg.png")',
+      "background-image:url(&quot;https://cdn.example.com/bg.png&quot;)",
     );
+    expect(html).not.toContain('url("https://cdn.example.com/bg.png")');
     expect(html).toContain("background-size:cover");
   });
 
