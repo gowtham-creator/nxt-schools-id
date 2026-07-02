@@ -111,12 +111,12 @@ const fld = (name, field, x, y, w, h, o = {}) => ({ ...txt(name, "", x, y, w, h,
 const img = (name, src, x, y, w, h, o = {}) => ({ id: id("i"), type: "image", name, src, x, y, w, h, fit: o.fit ?? "cover", ...(o.radius != null ? { radius: o.radius } : {}) });
 const rect = (name, x, y, w, h, o = {}) => ({ id: id("r"), type: "rect", name, x, y, w, h, ...(o.fill ? { fill: o.fill } : {}), ...(o.radius != null ? { radius: o.radius } : {}), ...(o.borderColor ? { borderColor: o.borderColor, borderWidth: o.borderWidth ?? 0.5 } : {}), ...(o.opacity != null ? { opacity: o.opacity } : {}) });
 
-const SCHOOL = "NXT PUBLIC SCHOOL";
+const SCHOOL = "NXT SCHOOL";
 const TAGLINE = "(Govt. Recognised)  ·  Estd. 2008";
 const ADDRESS = "SVSS Sankalp, Lower Tank Bund, Hyderabad – 500080";
 const PHONE = "Ph: +91 99594 37667";
 const SITE = "www.nxtschools.com";
-const TERMS = "•  This card is the property of Nxt Public School.\n•  The card must be worn visibly inside the campus.\n•  It is not transferable. Misuse invites action.\n•  Loss must be reported to the school office at once.";
+const TERMS = "•  This card is the property of NXT School.\n•  The card must be worn visibly inside the campus.\n•  It is not transferable. Misuse invites action.\n•  Loss must be reported to the school office at once.";
 
 // Ruled Label : Value rows (labels right-aligned so the colons line up).
 function rows(defs, xLabel, wLabel, xValue, wValue, yStart, rowH, hairX, hairW) {
@@ -138,11 +138,13 @@ function rows(defs, xLabel, wLabel, xValue, wValue, yStart, rowH, hairX, hairW) 
 const P_FRONT = {
   background: P_FRONT_BG,
   elements: [
-    img("logo", "logo", 2.8, 2.6, 9, 9, { fit: "contain" }),
-    txt("school", SCHOOL, 12.8, 3.0, 38.5, 5, { font: HEAD_FONT, size: 7.4, weight: 800, color: "#FFFFFF", ls: 0.05 }),
-    txt("tagline", TAGLINE, 12.8, 7.6, 38.5, 2.6, { size: 3.7, color: "#E0F2F1" }),
-    txt("address", ADDRESS, 12.8, 10.2, 38.5, 4.8, { size: 3.7, color: "#FFFFFF", opacity: 0.92, lh: 1.3 }),
-    txt("phone", PHONE, 12.8, 15.1, 38.5, 3, { size: 4.3, weight: 700, color: "#FDE68A" }),
+    // Official wordmark on a white chip (a blue wordmark disappears on the gradient).
+    rect("logo-chip", 2.6, 3.0, 13.6, 7.4, { fill: "#FFFFFF", radius: 1.4 }),
+    img("logo", "logo", 3.2, 3.7, 12.4, 6.0, { fit: "contain" }),
+    txt("school", SCHOOL, 17.4, 3.0, 34, 5, { font: HEAD_FONT, size: 7.2, weight: 800, color: "#FFFFFF", ls: 0.05 }),
+    txt("tagline", TAGLINE, 17.4, 7.7, 34, 2.6, { size: 3.6, color: "#E0F2F1" }),
+    txt("address", ADDRESS, 17.4, 10.4, 34, 4.8, { size: 3.6, color: "#FFFFFF", opacity: 0.92, lh: 1.3 }),
+    txt("phone", PHONE, 17.4, 15.2, 34, 3, { size: 4.3, weight: 700, color: "#FDE68A" }),
     rect("ribbon", 14.5, 18.5, 25, 4.8, { fill: GOLD, radius: 2.4 }),
     txt("ribbon-label", "IDENTITY CARD", 14.5, 18.5, 25, 4.8, { font: HEAD_FONT, size: 5.2, weight: 800, color: "#FFFFFF", align: "center", valign: "middle", ls: 0.45 }),
     rect("photo-frame", 16.4, 25.2, 21.2, 26, { fill: "#FFFFFF", borderColor: NAVY, borderWidth: 0.7, radius: 1.2 }),
@@ -188,10 +190,11 @@ const P_BACK = {
 const L_FRONT = {
   background: L_FRONT_BG,
   elements: [
-    img("logo", "logo", 3, 2.2, 9, 9, { fit: "contain" }),
-    txt("school", SCHOOL, 13.4, 2.5, 44, 4.6, { font: HEAD_FONT, size: 7.2, weight: 800, color: "#FFFFFF", ls: 0.05 }),
-    txt("tagline", TAGLINE, 13.4, 7.1, 44, 2.4, { size: 3.6, color: "#E0F2F1" }),
-    txt("address", ADDRESS, 13.4, 9.5, 46, 3, { size: 3.6, color: "#FFFFFF", opacity: 0.92 }),
+    rect("logo-chip", 3, 2.6, 15, 8, { fill: "#FFFFFF", radius: 1.6 }),
+    img("logo", "logo", 3.7, 3.4, 13.6, 6.4, { fit: "contain" }),
+    txt("school", SCHOOL, 19.8, 2.6, 37.5, 4.6, { font: HEAD_FONT, size: 7, weight: 800, color: "#FFFFFF", ls: 0.05 }),
+    txt("tagline", TAGLINE, 19.8, 7.2, 37.5, 2.4, { size: 3.6, color: "#E0F2F1" }),
+    txt("address", ADDRESS, 19.8, 9.7, 37.5, 3, { size: 3.4, color: "#FFFFFF", opacity: 0.92 }),
     txt("phone", PHONE, 58, 2.6, 24.6, 3, { size: 4.2, weight: 700, color: "#FDE68A", align: "right" }),
     rect("ribbon", 58, 6.4, 24.6, 4.4, { fill: GOLD, radius: 2.2 }),
     txt("ribbon-label", "IDENTITY CARD", 58, 6.4, 24.6, 4.4, { font: HEAD_FONT, size: 5, weight: 800, color: "#FFFFFF", align: "center", valign: "middle", ls: 0.4 }),
