@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import {
-  IdCard,
   Building2,
   PenTool,
   Users,
@@ -148,13 +147,9 @@ export default function LandingView() {
       {/* ── (a) Sticky glassy top bar ─────────────────────────── */}
       <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/70 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700 text-white shadow-sm">
-              <IdCard className="h-5 w-5" />
-            </div>
-            <span className="text-lg font-bold tracking-tight text-slate-900">
-              Nxt Schools ID
-            </span>
+          <Link href="/" className="flex items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo/nxt-mark.png" alt="NXT School" className="h-9 w-auto" />
           </Link>
           <nav className="flex items-center gap-2 sm:gap-3">
             <Link href="/login" className="btn-secondary hidden sm:inline-flex">
@@ -389,14 +384,12 @@ export default function LandingView() {
       {/* ── (f) Footer ────────────────────────────────────────── */}
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-10 sm:flex-row sm:px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-white">
-              <IdCard className="h-4 w-4" />
-            </div>
-            <span className="font-semibold text-slate-900">Nxt Schools ID</span>
+          <div className="flex items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo/nxt-mark.png" alt="NXT School" className="h-8 w-auto" />
           </div>
           <p className="text-sm text-slate-500">
-            © {new Date().getFullYear()} Nxt Schools ID. All rights reserved.
+            © {new Date().getFullYear()} NXT School. All rights reserved.
           </p>
           <nav className="flex items-center gap-5 text-sm">
             <Link

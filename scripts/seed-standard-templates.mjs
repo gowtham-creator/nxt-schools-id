@@ -112,6 +112,10 @@ const img = (name, src, x, y, w, h, o = {}) => ({ id: id("i"), type: "image", na
 const rect = (name, x, y, w, h, o = {}) => ({ id: id("r"), type: "rect", name, x, y, w, h, ...(o.fill ? { fill: o.fill } : {}), ...(o.radius != null ? { radius: o.radius } : {}), ...(o.borderColor ? { borderColor: o.borderColor, borderWidth: o.borderWidth ?? 0.5 } : {}), ...(o.opacity != null ? { opacity: o.opacity } : {}) });
 
 const SCHOOL = "NXT SCHOOL";
+// White knockout of the official wordmark — sits directly on the gradient
+// header with no backing chip. The wordmark IS the school name, so headers
+// don't repeat it as text.
+const WHITE_LOGO = "https://jqeyatzyzpchhexofiny.supabase.co/storage/v1/object/public/logos/nxt-mark-white.png";
 const TAGLINE = "(Govt. Recognised)  ·  Estd. 2008";
 const ADDRESS = "SVSS Sankalp, Lower Tank Bund, Hyderabad – 500080";
 const PHONE = "Ph: +91 99594 37667";
@@ -138,13 +142,10 @@ function rows(defs, xLabel, wLabel, xValue, wValue, yStart, rowH, hairX, hairW) 
 const P_FRONT = {
   background: P_FRONT_BG,
   elements: [
-    // Official wordmark on a white chip (a blue wordmark disappears on the gradient).
-    rect("logo-chip", 2.6, 3.0, 13.6, 7.4, { fill: "#FFFFFF", radius: 1.4 }),
-    img("logo", "logo", 3.2, 3.7, 12.4, 6.0, { fit: "contain" }),
-    txt("school", SCHOOL, 17.4, 3.0, 34, 5, { font: HEAD_FONT, size: 7.2, weight: 800, color: "#FFFFFF", ls: 0.05 }),
-    txt("tagline", TAGLINE, 17.4, 7.7, 34, 2.6, { size: 3.6, color: "#E0F2F1" }),
-    txt("address", ADDRESS, 17.4, 10.4, 34, 4.8, { size: 3.6, color: "#FFFFFF", opacity: 0.92, lh: 1.3 }),
-    txt("phone", PHONE, 17.4, 15.2, 34, 3, { size: 4.3, weight: 700, color: "#FDE68A" }),
+    img("logo", WHITE_LOGO, 3, 3.2, 20, 9.2, { fit: "contain" }),
+    txt("tagline", TAGLINE, 25.4, 3.5, 26, 4.8, { size: 3.4, color: "#E0F2F1", lh: 1.35 }),
+    txt("address", ADDRESS, 25.4, 8.2, 26, 5.4, { size: 3.4, color: "#FFFFFF", opacity: 0.92, lh: 1.35 }),
+    txt("phone", PHONE, 25.4, 13.9, 26, 3, { size: 4.1, weight: 700, color: "#FDE68A" }),
     rect("ribbon", 14.5, 18.5, 25, 4.8, { fill: GOLD, radius: 2.4 }),
     txt("ribbon-label", "IDENTITY CARD", 14.5, 18.5, 25, 4.8, { font: HEAD_FONT, size: 5.2, weight: 800, color: "#FFFFFF", align: "center", valign: "middle", ls: 0.45 }),
     rect("photo-frame", 16.4, 25.2, 21.2, 26, { fill: "#FFFFFF", borderColor: NAVY, borderWidth: 0.7, radius: 1.2 }),
@@ -169,8 +170,8 @@ const P_FRONT = {
 const P_BACK = {
   background: P_BACK_BG,
   elements: [
-    txt("school", SCHOOL, 3, 2.2, 48, 3.6, { font: HEAD_FONT, size: 5.6, weight: 700, color: "#FFFFFF", align: "center", ls: 0.2 }),
-    txt("sub", "STUDENT IDENTITY CARD · 2025–26", 3, 5.9, 48, 2.4, { size: 3.5, color: "#E0F2FE", align: "center", ls: 0.3 }),
+    img("logo-b", WHITE_LOGO, 20.6, 1.0, 12.8, 5.4, { fit: "contain" }),
+    txt("sub", "STUDENT IDENTITY CARD · 2025–26", 3, 6.7, 48, 2.2, { size: 3.1, color: "#E0F2FE", align: "center", ls: 0.3 }),
     txt("terms-h", "TERMS & CONDITIONS", 4, 12.4, 46, 3.4, { font: HEAD_FONT, size: 5.2, weight: 800, color: NAVY, align: "center", ls: 0.3 }),
     txt("terms", TERMS, 5.4, 16.6, 43.2, 17, { size: 3.9, color: MUTED, lh: 1.6 }),
     txt("blood-l", "Blood Group :", 5.4, 34.6, 17, 3, { size: 4.6, weight: 700, color: SLATE }),
@@ -190,11 +191,9 @@ const P_BACK = {
 const L_FRONT = {
   background: L_FRONT_BG,
   elements: [
-    rect("logo-chip", 3, 2.6, 15, 8, { fill: "#FFFFFF", radius: 1.6 }),
-    img("logo", "logo", 3.7, 3.4, 13.6, 6.4, { fit: "contain" }),
-    txt("school", SCHOOL, 19.8, 2.6, 37.5, 4.6, { font: HEAD_FONT, size: 7, weight: 800, color: "#FFFFFF", ls: 0.05 }),
-    txt("tagline", TAGLINE, 19.8, 7.2, 37.5, 2.4, { size: 3.6, color: "#E0F2F1" }),
-    txt("address", ADDRESS, 19.8, 9.7, 37.5, 3, { size: 3.4, color: "#FFFFFF", opacity: 0.92 }),
+    img("logo", WHITE_LOGO, 3, 2.4, 19.5, 9, { fit: "contain" }),
+    txt("tagline", TAGLINE, 24.8, 2.9, 32, 2.4, { size: 3.5, color: "#E0F2F1" }),
+    txt("address", ADDRESS, 24.8, 5.8, 32, 5, { size: 3.4, color: "#FFFFFF", opacity: 0.92, lh: 1.35 }),
     txt("phone", PHONE, 58, 2.6, 24.6, 3, { size: 4.2, weight: 700, color: "#FDE68A", align: "right" }),
     rect("ribbon", 58, 6.4, 24.6, 4.4, { fill: GOLD, radius: 2.2 }),
     txt("ribbon-label", "IDENTITY CARD", 58, 6.4, 24.6, 4.4, { font: HEAD_FONT, size: 5, weight: 800, color: "#FFFFFF", align: "center", valign: "middle", ls: 0.4 }),

@@ -39,7 +39,13 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-screen bg-slate-50">
       <aside className="hidden w-60 shrink-0 border-r border-slate-200 bg-white p-4 md:block">
-        <div className="px-2 text-xl font-bold tracking-tight text-slate-900">Nxt Schools ID</div>
+        <div className="px-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo/nxt-mark.png" alt="NXT School" className="h-9 w-auto" />
+          <div className="mt-1.5 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+            ID Card Suite
+          </div>
+        </div>
         <nav className="mt-6 space-y-1">
           {NAV.filter((n) => !n.roles || n.roles.includes(role)).map((n) => (
             <NavLink key={n.href} href={n.href} label={n.label} />

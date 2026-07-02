@@ -100,12 +100,8 @@ export default function LoginView({
         <div className="pointer-events-none absolute -bottom-32 -right-16 h-[32rem] w-[32rem] rounded-full bg-cyan-400/20 blur-3xl" />
 
         <div className="relative z-10 flex w-full flex-col justify-between p-12">
-          <div className="flex items-center gap-2 text-white">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/25">
-              <IdCard className="h-5 w-5" />
-            </div>
-            <span className="text-lg font-bold tracking-tight">Nxt Schools ID</span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo/nxt-mark-white.png" alt="NXT School" className="h-11 w-auto self-start" />
 
           {/* Floating cards */}
           <div className="relative mx-auto my-8 h-72 w-full max-w-md">
@@ -151,11 +147,9 @@ export default function LoginView({
           transition={{ duration: 0.5, delay: 0.1 }}
           className="w-full max-w-sm"
         >
-          <div className="mb-6 flex items-center gap-2 lg:hidden">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-white">
-              <IdCard className="h-5 w-5" />
-            </div>
-            <span className="text-lg font-bold tracking-tight text-slate-900">Nxt Schools ID</span>
+          <div className="mb-6 lg:hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo/nxt-mark.png" alt="NXT School" className="h-10 w-auto" />
           </div>
 
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Welcome back</h2>
