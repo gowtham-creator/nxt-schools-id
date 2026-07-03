@@ -45,6 +45,14 @@ export interface DashboardKpis {
   photoCoverage: number;
 }
 
+/** One `card.scanned` audit event, resolved to the member it hit. */
+export interface ScanEvent {
+  /** ISO timestamp of the scan. */
+  at: string;
+  name: string;
+  identifier: string | null;
+}
+
 /** Fully-typed, serializable payload for the dashboard. */
 export interface AnalyticsData {
   kpis: DashboardKpis;
@@ -52,6 +60,9 @@ export interface AnalyticsData {
   generatedByDay: DayCount[];
   perBranch: BranchCount[];
   perClass: ClassCount[];
+  /** card.scanned events in the last 24 h (0 for roles without audit access). */
+  scans24h: number;
+  recentScans: ScanEvent[];
 }
 
 /** All 5 pipeline stages in display order, with human labels. */
@@ -127,18 +138,30 @@ export async function getDashboardAnalytics(
     .limit(5000);
   let branchesQ = supabase.from("branches").select("id,name");
   let classesQ = supabase.from("classes").select("id,name,section");
+  // Scan-station activity (audit_log is RLS'd to admins — others just get 0/[]).
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  let scansQ = supabase
+    .from("audit_log")
+    .select("entity_id,created_at")
+    .eq("action", "card.scanned")
+    .order("created_at", { ascending: false })
+    .limit(6);
+  let scanCountQ = supabase
+    .from("audit_log")
+    .select("id", { count: "exact", head: true })
+    .eq("action", "card.scanned")
+    .gte("created_at", since24h);
 
   if (schoolId) {
     membersQ = membersQ.eq("school_id", schoolId);
     branchesQ = branchesQ.eq("school_id", schoolId);
     classesQ = classesQ.eq("school_id", schoolId);
+    scansQ = scansQ.eq("school_id", schoolId);
+    scanCountQ = scanCountQ.eq("school_id", schoolId);
   }
 
-  const [membersRes, branchesRes, classesRes] = await Promise.all([
-    membersQ,
-    branchesQ,
-    classesQ,
-  ]);
+  const [membersRes, branchesRes, classesRes, scansRes, scanCountRes] =
+    await Promise.all([membersQ, branchesQ, classesQ, scansQ, scanCountQ]);
 
   const members = (membersRes.data ?? []) as unknown as MemberAggRow[];
   const branches = (branchesRes.data ?? []) as unknown as BranchRow[];
@@ -224,5 +247,52 @@ export async function getDashboardAnalytics(
     .sort((a, b) => b.students - a.students)
     .slice(0, TOP_CLASSES);
 
-  return { kpis, statusBreakdown, generatedByDay, perBranch, perClass };
+  // ── Recent scans (resolve member names for the audit rows) ──
+  type ScanRow = { entity_id: string | null; created_at: string };
+  type NameRow = {
+    id: string;
+    first_name: string;
+    last_name: string | null;
+    identifier: string | null;
+  };
+  const scanRows = (scansRes.data ?? []) as unknown as ScanRow[];
+  const scanIds = [
+    ...new Set(
+      scanRows
+        .map((r) => r.entity_id)
+        .filter((v): v is string => v != null && v !== ""),
+    ),
+  ];
+  const nameById = new Map<string, { name: string; identifier: string | null }>();
+  if (scanIds.length > 0) {
+    const { data } = await supabase
+      .from("members")
+      .select("id,first_name,last_name,identifier")
+      .in("id", scanIds);
+    for (const r of (data ?? []) as unknown as NameRow[]) {
+      nameById.set(r.id, {
+        name: [r.first_name, r.last_name].filter(Boolean).join(" "),
+        identifier: r.identifier,
+      });
+    }
+  }
+  const recentScans: ScanEvent[] = scanRows.map((r) => {
+    const info = r.entity_id ? nameById.get(r.entity_id) : undefined;
+    return {
+      at: r.created_at,
+      name: info?.name ?? "Unknown member",
+      identifier: info?.identifier ?? null,
+    };
+  });
+  const scans24h = scanCountRes.count ?? 0;
+
+  return {
+    kpis,
+    statusBreakdown,
+    generatedByDay,
+    perBranch,
+    perClass,
+    scans24h,
+    recentScans,
+  };
 }

@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type AuditAction =
   | "card.generated"
   | "card.status_changed"
+  | "card.scanned"
   | "member.created"
   | "member.deleted"
   | "user.invited"

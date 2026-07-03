@@ -16,12 +16,16 @@ type Row = Record<string, unknown>;
 interface QueryResult {
   data: Row[];
   error: null;
+  count: number | null;
 }
 
 interface FakeQuery extends PromiseLike<QueryResult> {
-  select(cols: string): FakeQuery;
+  select(cols: string, opts?: { count?: string; head?: boolean }): FakeQuery;
   limit(n: number): FakeQuery;
   eq(col: string, val: unknown): FakeQuery;
+  gte(col: string, val: unknown): FakeQuery;
+  order(col: string, opts?: { ascending?: boolean }): FakeQuery;
+  in(col: string, vals: unknown[]): FakeQuery;
 }
 
 function makeFakeClient(
@@ -29,7 +33,8 @@ function makeFakeClient(
   eqCalls: string[] = [],
 ): SupabaseClient {
   const from = (table: string): FakeQuery => {
-    const result: QueryResult = { data: tables[table] ?? [], error: null };
+    const rows = tables[table] ?? [];
+    const result: QueryResult = { data: rows, error: null, count: rows.length };
     const q: FakeQuery = {
       select: () => q,
       limit: () => q,
@@ -37,6 +42,9 @@ function makeFakeClient(
         eqCalls.push(`${table}.${col}=${String(val)}`);
         return q;
       },
+      gte: () => q,
+      order: () => q,
+      in: () => q,
       then: (onfulfilled, onrejected) =>
         Promise.resolve(result).then(onfulfilled, onrejected),
     };
@@ -210,12 +218,18 @@ describe("getDashboardAnalytics", () => {
   });
 
   it("narrows every table by school_id when one is provided (and not when null)", async () => {
+    const schoolScoped = (calls: string[]) =>
+      calls.filter((c) => c.includes(".school_id=")).sort();
+
     const scoped: string[] = [];
     await getDashboardAnalytics(
       makeFakeClient({ members: [], branches: [], classes: [] }, scoped),
       "school-1",
     );
-    expect(scoped.sort()).toEqual([
+    // audit_log is scoped twice: the recent-scans list and the 24h head count.
+    expect(schoolScoped(scoped)).toEqual([
+      "audit_log.school_id=school-1",
+      "audit_log.school_id=school-1",
       "branches.school_id=school-1",
       "classes.school_id=school-1",
       "members.school_id=school-1",
@@ -226,6 +240,29 @@ describe("getDashboardAnalytics", () => {
       makeFakeClient({ members: [], branches: [], classes: [] }, unscoped),
       null,
     );
-    expect(unscoped).toEqual([]);
+    expect(schoolScoped(unscoped)).toEqual([]);
+  });
+
+  it("resolves recent card.scanned events to member names (Unknown for misses)", async () => {
+    const members = [
+      makeMemberRow({
+        id: "m1",
+        first_name: "Ananya",
+        last_name: "Sharma",
+        identifier: "NXT-2025-001",
+      }),
+    ];
+    const audit_log = [
+      { entity_id: "m1", created_at: daysAgoIso(0) },
+      { entity_id: "ghost", created_at: daysAgoIso(1) },
+    ];
+    const client = makeFakeClient({ members, branches: [], classes: [], audit_log });
+
+    const { recentScans } = await getDashboardAnalytics(client, null);
+
+    expect(recentScans).toEqual([
+      { at: audit_log[0].created_at, name: "Ananya Sharma", identifier: "NXT-2025-001" },
+      { at: audit_log[1].created_at, name: "Unknown member", identifier: null },
+    ]);
   });
 });

@@ -11,6 +11,7 @@ const NAV: { href: string; label: string; roles?: AppRole[] }[] = [
   { href: "/branches", label: "Branches", roles: ["super_admin", "admin"] },
   { href: "/academic-years", label: "Academic Years", roles: ["super_admin", "admin"] },
   { href: "/members", label: "Members" },
+  { href: "/scan", label: "Scan" },
   { href: "/templates", label: "Templates", roles: ["super_admin", "admin"] },
   { href: "/users", label: "Users", roles: ["super_admin", "admin"] },
   { href: "/audit", label: "Audit log", roles: ["super_admin", "admin"] },

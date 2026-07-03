@@ -14,6 +14,8 @@ import {
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
+import { ScanLine } from "lucide-react";
 import type { AnalyticsData } from "@/lib/analytics";
 import StatusDonut from "./charts/StatusDonut";
 import GeneratedAreaChart from "./charts/GeneratedAreaChart";
@@ -226,6 +228,53 @@ export default function DashboardView({
         </motion.div>
         <motion.div variants={item}>
           <ClassBarChart data={analytics.perClass} />
+        </motion.div>
+
+        {/* Scan-station activity */}
+        <motion.div variants={item} className="lg:col-span-2">
+          <div className="card p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50">
+                <ScanLine className="h-5 w-5 text-teal-700" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Scan activity</h3>
+                <p className="text-xs text-slate-500">
+                  <span className="font-semibold text-slate-900">{analytics.scans24h}</span>{" "}
+                  card{analytics.scans24h === 1 ? "" : "s"} scanned in the last 24 h
+                </p>
+              </div>
+              <Link href="/scan" className="btn-secondary btn-sm ml-auto">
+                Open Scan station
+              </Link>
+            </div>
+            {analytics.recentScans.length > 0 ? (
+              <ul className="mt-4 divide-y divide-slate-100">
+                {analytics.recentScans.map((s, i) => (
+                  <li key={`${s.at}-${i}`} className="flex items-center gap-3 py-2 text-sm">
+                    <span className="font-medium text-slate-800">{s.name}</span>
+                    {s.identifier ? (
+                      <span className="text-xs text-slate-400">{s.identifier}</span>
+                    ) : null}
+                    {/* Locale/timezone differs between SSR (UTC) and the browser. */}
+                    <span suppressHydrationWarning className="ml-auto text-xs text-slate-400">
+                      {new Date(s.at).toLocaleString([], {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-sm text-slate-400">
+                No scans recorded yet — scan any printed card's QR or barcode to check a
+                student in.
+              </p>
+            )}
+          </div>
         </motion.div>
       </div>
     </motion.div>
