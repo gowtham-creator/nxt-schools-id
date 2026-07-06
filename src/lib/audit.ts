@@ -10,6 +10,7 @@ export type AuditAction =
   | "card.generated"
   | "card.status_changed"
   | "card.scanned"
+  | "sheet.printed"
   | "member.created"
   | "member.deleted"
   | "user.invited"

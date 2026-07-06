@@ -25,6 +25,7 @@ type MemberFieldKey =
   | "guardian_name"
   | "guardian_phone"
   | "phone"
+  | "address"
   | "valid_until"
   | "designation"
   | "department";
@@ -37,6 +38,7 @@ const MEMBER_FIELD_KEYS: readonly MemberFieldKey[] = [
   "guardian_name",
   "guardian_phone",
   "phone",
+  "address",
   "valid_until",
   "designation",
   "department",
@@ -49,8 +51,13 @@ const isMemberFieldKey = (key: string): key is MemberFieldKey =>
 const fullName = (member: Member): string =>
   [member.first_name, member.last_name].filter(Boolean).join(" ");
 
-/** Read a bound member value as a display string (nulls → ""). */
-function memberValue(field: string, member: Member, classRow: ClassInfo): string {
+/** Read a bound member/school value as a display string (nulls → ""). */
+function memberValue(
+  field: string,
+  member: Member,
+  classRow: ClassInfo,
+  school: Partial<School>,
+): string {
   switch (field) {
     case "full_name":
       return fullName(member);
@@ -62,6 +69,14 @@ function memberValue(field: string, member: Member, classRow: ClassInfo): string
       return classRow?.name ?? "";
     case "section":
       return classRow?.section ?? "";
+    case "school_name":
+      return school.name ?? "";
+    case "school_address":
+      return school.address ?? "";
+    case "school_phone":
+      return school.phone ?? "";
+    case "school_email":
+      return school.email ?? "";
     default:
       return isMemberFieldKey(field) ? member[field] ?? "" : "";
   }
@@ -89,7 +104,7 @@ export async function resolveSide(
       }
 
       case "field": {
-        data[el.id] = el.field ? memberValue(el.field, member, classRow) : "";
+        data[el.id] = el.field ? memberValue(el.field, member, classRow, school) : "";
         break;
       }
 
@@ -108,7 +123,7 @@ export async function resolveSide(
           el.value === "qr_token"
             ? `${appUrl}/verify/${member.qr_token}`
             : el.value
-              ? memberValue(el.value, member, classRow)
+              ? memberValue(el.value, member, classRow, school)
               : "";
         data[el.id] = value ? await qrPngDataUrl(value, { ecLevel: el.ecLevel }) : "";
         break;

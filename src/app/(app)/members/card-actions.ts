@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { renderCardPdf } from "@/lib/render/pdf";
+import { renderPrintSheetPdf, type SheetEntry } from "@/lib/render/sheet";
 import { logAudit } from "@/lib/audit";
 import type { IdTemplate, Member, PipelineStatus, School } from "@/lib/types";
 
@@ -29,8 +30,70 @@ async function ctx() {
 const MEMBER_SELECT =
   "id,school_id,member_type,identifier,first_name,last_name,photo_url,dob,gender,blood_group,class_id,roll_no,designation,department,guardian_name,guardian_phone,phone,email,address,valid_from,valid_until,status,qr_token,branch_id,template_id,academic_year_id,pipeline_status,card_pdf_url,card_generated_at,bg_removed,extra,created_at,updated_at";
 
+/** School columns the renderer + per-type template resolution need. */
+const SCHOOL_RENDER_SELECT =
+  "name,short_name,logo_url,address,phone,email,primary_color,secondary_color,student_template_id,staff_template_id";
+
+/** Row shape returned by `SCHOOL_RENDER_SELECT`. */
+type SchoolRenderRow = Pick<
+  School,
+  | "name"
+  | "short_name"
+  | "logo_url"
+  | "address"
+  | "phone"
+  | "email"
+  | "primary_color"
+  | "secondary_color"
+  | "student_template_id"
+  | "staff_template_id"
+>;
+
 /** The Supabase client type as returned by our async `createClient()`. */
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Resolve the template a member's card should render with:
+ * member.template_id → the school's per-type default (staff_template_id /
+ * student_template_id) → the legacy is_default template. Returns null if none.
+ */
+async function resolveTemplate(
+  supabase: SupabaseClient,
+  schoolId: string,
+  member: Member,
+  school: SchoolRenderRow,
+): Promise<IdTemplate | null> {
+  const byId = async (id: string): Promise<IdTemplate | null> => {
+    const { data } = await supabase
+      .from("id_templates")
+      .select("*")
+      .eq("id", id)
+      .eq("school_id", schoolId)
+      .single<IdTemplate>();
+    return data ?? null;
+  };
+
+  let template: IdTemplate | null = null;
+  if (member.template_id) template = await byId(member.template_id);
+
+  if (!template) {
+    const defaultId =
+      member.member_type === "staff" ? school.staff_template_id : school.student_template_id;
+    if (defaultId) template = await byId(defaultId);
+  }
+
+  if (!template) {
+    const { data } = await supabase
+      .from("id_templates")
+      .select("*")
+      .eq("school_id", schoolId)
+      .eq("is_default", true)
+      .single<IdTemplate>();
+    template = data ?? null;
+  }
+
+  return template;
+}
 
 /**
  * Core single-row pipeline: load member + template + class + school, render the
@@ -60,27 +123,20 @@ async function generateOne(
       .single<Member>();
     if (memberErr || !member) return false;
 
-    // The member's own template, else the school's default id_template.
-    let template: IdTemplate | null = null;
-    if (member.template_id) {
-      const { data } = await supabase
-        .from("id_templates")
-        .select("*")
-        .eq("id", member.template_id)
-        .eq("school_id", schoolId)
-        .single<IdTemplate>();
-      template = data ?? null;
-    }
+    // School first — its per-type default template ids feed template resolution.
+    const { data: school } = await supabase
+      .from("schools")
+      .select(SCHOOL_RENDER_SELECT)
+      .eq("id", schoolId)
+      .single<SchoolRenderRow>();
+    if (!school) return false;
+
+    // member.template_id → per-type school default → legacy is_default.
+    const template = await resolveTemplate(supabase, schoolId, member, school);
     if (!template) {
-      const { data } = await supabase
-        .from("id_templates")
-        .select("*")
-        .eq("school_id", schoolId)
-        .eq("is_default", true)
-        .single<IdTemplate>();
-      template = data ?? null;
+      lastGenerateError = "no template assigned and no school default";
+      return false;
     }
-    if (!template) return false;
 
     const { data: classRow } = member.class_id
       ? await supabase
@@ -89,13 +145,6 @@ async function generateOne(
           .eq("id", member.class_id)
           .single<{ name: string; section: string | null }>()
       : { data: null };
-
-    const { data: school } = await supabase
-      .from("schools")
-      .select("name,short_name,logo_url,primary_color,secondary_color")
-      .eq("id", schoolId)
-      .single<Partial<School>>();
-    if (!school) return false;
 
     const pdf: Uint8Array = await renderCardPdf(template, member, classRow, school);
 
@@ -257,6 +306,100 @@ export async function advanceStatus(id: string, to: PipelineStatus) {
 
   revalidatePath("/members");
   redirect("/members?ok=Updated");
+}
+
+/**
+ * Renders the selected members' cards onto duplex-ready A4 sheets (fronts page
+ * then mirrored backs page, cut guides included), uploads the PDF to the
+ * private `cards` bucket and returns a 24-hour signed URL. No redirect — the
+ * client opens the URL itself.
+ */
+export async function printSheet(
+  ids: string[],
+): Promise<{ url: string | null; error: string | null }> {
+  const { supabase, schoolId, user } = await ctx();
+  if (!schoolId) return { url: null, error: "No school assigned to your account" };
+  if (ids.length === 0) return { url: null, error: "No members selected" };
+
+  try {
+    const { data: members, error: membersErr } = await supabase
+      .from("members")
+      .select(MEMBER_SELECT)
+      .in("id", ids)
+      .eq("school_id", schoolId);
+    if (membersErr) return { url: null, error: membersErr.message };
+    const rows = (members ?? []) as Member[];
+    if (rows.length === 0) return { url: null, error: "No members found" };
+
+    const { data: school } = await supabase
+      .from("schools")
+      .select(SCHOOL_RENDER_SELECT)
+      .eq("id", schoolId)
+      .single<SchoolRenderRow>();
+    if (!school) return { url: null, error: "School not found" };
+
+    // One query for every class the batch references.
+    const classIds = [
+      ...new Set(rows.map((m) => m.class_id).filter((v): v is string => v != null)),
+    ];
+    const classMap = new Map<string, { name: string; section: string | null }>();
+    if (classIds.length > 0) {
+      const { data: classes } = await supabase
+        .from("classes")
+        .select("id,name,section")
+        .in("id", classIds);
+      for (const c of (classes ?? []) as { id: string; name: string; section: string | null }[]) {
+        classMap.set(c.id, { name: c.name, section: c.section });
+      }
+    }
+
+    // Same resolution order as generateOne; memoised so a batch sharing one
+    // template (or one per-type default) costs one query, not one per member.
+    const templateCache = new Map<string, IdTemplate | null>();
+    const entries: SheetEntry[] = [];
+    for (const member of rows) {
+      const cacheKey = member.template_id ?? `type:${member.member_type}`;
+      let template = templateCache.get(cacheKey);
+      if (template === undefined) {
+        template = await resolveTemplate(supabase, schoolId, member, school);
+        templateCache.set(cacheKey, template);
+      }
+      if (!template) {
+        const name = [member.first_name, member.last_name].filter(Boolean).join(" ");
+        return { url: null, error: `No template found for ${name}` };
+      }
+      entries.push({
+        template,
+        member,
+        classRow: member.class_id ? classMap.get(member.class_id) ?? null : null,
+      });
+    }
+
+    const pdf: Uint8Array = await renderPrintSheetPdf(entries, school);
+
+    const path = `${schoolId}/sheets/sheet-${new (globalThis.Date)().getTime()}.pdf`;
+    const { error: uploadErr } = await supabase.storage
+      .from("cards")
+      .upload(path, pdf, { upsert: true, contentType: "application/pdf" });
+    if (uploadErr) return { url: null, error: `upload: ${uploadErr.message}` };
+
+    const { data: signed } = await supabase.storage
+      .from("cards")
+      .createSignedUrl(path, 60 * 60 * 24);
+    if (!signed?.signedUrl) return { url: null, error: "Could not create a download link" };
+
+    await logAudit(supabase, {
+      schoolId,
+      actorId: user.id,
+      action: "sheet.printed",
+      targetType: "member",
+      meta: { count: entries.length, ids },
+    });
+
+    return { url: signed.signedUrl, error: null };
+  } catch (err) {
+    return { url: null, error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 /** Resets a member's card back to the start of the pipeline. */

@@ -13,11 +13,20 @@ export default async function TemplatesPage({
   const sp = await searchParams;
   const supabase = await createClient();
   const [{ data: school }, { data: rows }] = await Promise.all([
-    supabase.from("schools").select("logo_url").limit(1).maybeSingle(),
+    supabase
+      .from("schools")
+      .select("logo_url, student_template_id, staff_template_id")
+      .limit(1)
+      .maybeSingle(),
     supabase.from("id_templates").select("*").order("created_at", { ascending: false }),
   ]);
   const templates = (rows ?? []) as IdTemplate[];
   const logo = school?.logo_url ?? null;
+  // Active school-wide default per kind (schools.student/staff_template_id).
+  const schoolDefaults: Record<"student" | "staff", string | null> = {
+    student: (school?.student_template_id ?? null) as string | null,
+    staff: (school?.staff_template_id ?? null) as string | null,
+  };
 
   return (
     <div>
@@ -45,7 +54,12 @@ export default async function TemplatesPage({
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((t) => (
-            <TemplateCard key={t.id} template={t} logo={logo} />
+            <TemplateCard
+              key={t.id}
+              template={t}
+              logo={logo}
+              isSchoolDefault={schoolDefaults[t.member_type] === t.id}
+            />
           ))}
         </div>
       )}

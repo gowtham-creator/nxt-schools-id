@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardAnalytics } from "@/lib/analytics";
 import type { PipelineStatus } from "@/lib/types";
-import DashboardView, { type DashboardMetrics } from "./DashboardView";
+import DashboardView, { type DashboardMetrics, type SetupFlags } from "./DashboardView";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,7 @@ export default async function DashboardPage() {
     supabase.from("members").select("*", { count: "exact", head: true });
 
   const [
+    school,
     totalBranches,
     totalStudents,
     imageUploaded,
@@ -45,6 +46,19 @@ export default async function DashboardPage() {
     printed,
     analytics,
   ] = await Promise.all([
+    supabase
+      .from("schools")
+      .select("logo_url, phone, student_template_id")
+      .limit(1)
+      .maybeSingle()
+      .then(
+        (r) =>
+          (r.data ?? null) as {
+            logo_url: string | null;
+            phone: string | null;
+            student_template_id: string | null;
+          } | null,
+      ),
     supabase
       .from("branches")
       .select("*", { count: "exact", head: true })
@@ -76,5 +90,13 @@ export default async function DashboardPage() {
     printed,
   };
 
-  return <DashboardView metrics={metrics} analytics={analytics} />;
+  // Onboarding checklist flags — which "Get started" steps are already done.
+  const setup: SetupFlags = {
+    branded: !!(school?.logo_url && school?.phone),
+    templatesChosen: !!school?.student_template_id,
+    studentsAdded: totalStudents > 0,
+    cardsGenerated: idGenerated > 0,
+  };
+
+  return <DashboardView metrics={metrics} analytics={analytics} setup={setup} />;
 }

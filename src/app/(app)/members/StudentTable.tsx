@@ -12,6 +12,7 @@ import {
   bulkGenerate,
   bulkAssignTemplate,
   bulkAdvance,
+  printSheet,
 } from "./card-actions";
 
 /** Row shape built by members/page.tsx and handed to this table. */
@@ -122,34 +123,20 @@ export default function StudentTable({
             Generate IDs
           </button>
 
-          <div className="flex items-center gap-1">
-            <select
-              value={assignTemplateId}
-              disabled={pending}
-              onChange={(e) => setAssignTemplateId(e.target.value)}
-              className="field-input w-auto"
-            >
-              {templates.length === 0 && <option value="">No templates</option>}
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              disabled={pending || !assignTemplateId}
-              onClick={() =>
-                run(async () => {
-                  const r = await bulkAssignTemplate(ids(), assignTemplateId);
-                  return `Template assigned to ${r.ok}.`;
-                })
-              }
-              className="btn-secondary btn-sm"
-            >
-              Assign
-            </button>
-          </div>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                const r = await printSheet(ids());
+                if (r.url) window.open(r.url, "_blank");
+                setNote(r.error ?? (r.url ? "Print sheet ready." : ""));
+              })
+            }
+            className="btn-secondary btn-sm"
+          >
+            Print sheet (A4)
+          </button>
 
           <button
             type="button"
@@ -190,6 +177,37 @@ export default function StudentTable({
               className="btn-secondary btn-sm"
             >
               Advance
+            </button>
+          </div>
+
+          {/* Per-member template override — the school-wide template (set on the
+              Templates page) now governs; this only pins an exception. */}
+          <div className="flex items-center gap-1">
+            <select
+              value={assignTemplateId}
+              disabled={pending}
+              onChange={(e) => setAssignTemplateId(e.target.value)}
+              className="field-input w-auto"
+            >
+              {templates.length === 0 && <option value="">No templates</option>}
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={pending || !assignTemplateId}
+              onClick={() =>
+                run(async () => {
+                  const r = await bulkAssignTemplate(ids(), assignTemplateId);
+                  return `Template assigned to ${r.ok}.`;
+                })
+              }
+              className="btn-secondary btn-sm"
+            >
+              Override
             </button>
           </div>
 

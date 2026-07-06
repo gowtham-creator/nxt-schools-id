@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
 import { CARD_CR80 } from "@/lib/constants";
-import type { TemplateSide } from "@/lib/types";
+import type { MemberType, TemplateSide } from "@/lib/types";
 
 async function ctx() {
   const supabase = await createClient();
@@ -88,6 +88,40 @@ export async function setDefaultTemplate(id: string) {
   await supabase.from("id_templates").update({ is_default: false }).eq("school_id", schoolId);
   await supabase.from("id_templates").update({ is_default: true }).eq("id", id);
   revalidatePath("/templates");
+}
+
+/**
+ * Makes one template the school-wide default for every student or staff card
+ * (schools.student_template_id / staff_template_id — migration 0003).
+ */
+export async function setSchoolTemplate(templateId: string, kind: "student" | "staff") {
+  const { supabase, schoolId } = await ctx();
+  if (!schoolId) redirect("/templates?error=No+school+assigned");
+
+  // The template must belong to this school AND be designed for `kind`.
+  const { data: tpl } = await supabase
+    .from("id_templates")
+    .select("id, member_type")
+    .eq("id", templateId)
+    .eq("school_id", schoolId)
+    .single<{ id: string; member_type: MemberType }>();
+  if (!tpl) redirect("/templates?error=Template+not+found");
+  if (tpl.member_type !== kind)
+    redirect(
+      `/templates?error=${encodeURIComponent(
+        `That is a ${tpl.member_type} template — it can't be the school ${kind} template`,
+      )}`,
+    );
+
+  const column = kind === "staff" ? "staff_template_id" : "student_template_id";
+  const { error } = await supabase
+    .from("schools")
+    .update({ [column]: templateId })
+    .eq("id", schoolId);
+  if (error) redirect(`/templates?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath("/templates");
+  redirect("/templates?ok=Template+applied+to+the+whole+school");
 }
 
 export async function duplicateTemplate(id: string) {

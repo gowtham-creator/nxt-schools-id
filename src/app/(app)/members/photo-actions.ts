@@ -21,17 +21,27 @@ async function ctx() {
   return { supabase, user, schoolId: (profile?.school_id ?? null) as string | null };
 }
 
+/** Server-side photo size cap (bytes) — client-side resizing can be bypassed. */
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+
 /**
  * Uploads a single member photo to the public `photos` bucket and returns its
  * public URL. Called from PhotoField after a file pick or a PhotoCapture crop.
+ * Returns `{url, error}` (never throws for expected failures) so the client
+ * can show the message inline.
  */
-export async function uploadMemberPhoto(fd: FormData): Promise<{ url: string }> {
+export async function uploadMemberPhoto(
+  fd: FormData,
+): Promise<{ url: string | null; error: string | null }> {
   const { supabase, schoolId } = await ctx();
-  if (!schoolId) throw new Error("No school assigned to your account");
+  if (!schoolId) return { url: null, error: "No school assigned to your account" };
 
   const file = fd.get("photo") as File | null;
-  if (!file || typeof file === "string") throw new Error("No photo provided");
-  if (!file.type.startsWith("image/")) throw new Error("Please choose an image file");
+  if (!file || typeof file === "string") return { url: null, error: "No photo provided" };
+  if (!file.type.startsWith("image/"))
+    return { url: null, error: "Please choose an image file" };
+  if (file.size > MAX_PHOTO_BYTES)
+    return { url: null, error: "Photo is too large — maximum size is 2 MB" };
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const path = `${schoolId}/${crypto.randomUUID()}.jpg`;
@@ -39,8 +49,8 @@ export async function uploadMemberPhoto(fd: FormData): Promise<{ url: string }> 
   const { error } = await supabase.storage
     .from("photos")
     .upload(path, bytes, { upsert: true, contentType: file.type || "image/jpeg" });
-  if (error) throw new Error(error.message);
+  if (error) return { url: null, error: error.message };
 
   const { data } = supabase.storage.from("photos").getPublicUrl(path);
-  return { url: data.publicUrl };
+  return { url: data.publicUrl, error: null };
 }

@@ -8,6 +8,10 @@ type Props = {
   initialUrl?: string | null;
 };
 
+/** Client-side upload guard: 2 MB max, JPG/PNG only (mirrors the server action). */
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
+
 /**
  * Circular photo control for MemberForm. Holds the current photo URL in a
  * hidden <input name="photo_url"> (so the form still submits photo_url), and
@@ -26,7 +30,11 @@ export function PhotoField({ initialUrl }: Props) {
     fd.append("photo", file, filename);
     startTransition(async () => {
       try {
-        const { url } = await uploadMemberPhoto(fd);
+        const { url, error: uploadError } = await uploadMemberPhoto(fd);
+        if (uploadError || !url) {
+          setError(uploadError ?? "Upload failed");
+          return;
+        }
         setPhotoUrl(url);
         setShowCamera(false);
       } catch (err) {
@@ -39,8 +47,12 @@ export function PhotoField({ initialUrl }: Props) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file later
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Please choose an image file");
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setError("Please choose a JPG or PNG image");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setError("Photo must be under 2 MB");
       return;
     }
     upload(file, file.name);
@@ -66,7 +78,7 @@ export function PhotoField({ initialUrl }: Props) {
           {pending ? "Uploading…" : "Upload photo"}
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png"
             className="hidden"
             onChange={onFile}
             disabled={pending}
@@ -80,6 +92,7 @@ export function PhotoField({ initialUrl }: Props) {
         >
           {showCamera ? "Close camera" : "Use camera"}
         </button>
+        <p className="text-xs text-slate-400">Passport size (35×45), JPG/PNG, max 2 MB.</p>
       </div>
 
       {showCamera && (

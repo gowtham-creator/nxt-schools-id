@@ -19,6 +19,7 @@ const ACTION_META: Record<string, { label: string; className: string }> = {
   "card.generated": { label: "Card generated", className: "bg-teal-50 text-teal-700" },
   "card.status_changed": { label: "Card status changed", className: "bg-teal-50 text-teal-700" },
   "card.scanned": { label: "Card scanned", className: "bg-cyan-50 text-cyan-700" },
+  "sheet.printed": { label: "Print sheet", className: "bg-cyan-50 text-cyan-700" },
   "member.created": { label: "Member created", className: "bg-emerald-50 text-emerald-700" },
   "member.deleted": { label: "Member deleted", className: "bg-red-50 text-red-700" },
   "user.invited": { label: "User invited", className: "bg-blue-50 text-blue-700" },

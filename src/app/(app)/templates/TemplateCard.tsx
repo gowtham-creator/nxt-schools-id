@@ -4,13 +4,18 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Copy, Pencil, Star, Trash2 } from "lucide-react";
-import { deleteTemplate, duplicateTemplate, setDefaultTemplate } from "./actions";
+import {
+  deleteTemplate,
+  duplicateTemplate,
+  setDefaultTemplate,
+  setSchoolTemplate,
+} from "./actions";
 import type { IdTemplate } from "@/lib/types";
 
 /** Minimal, plain-serializable slice of a template the card needs to render. */
 export type TemplateCardData = Pick<
   IdTemplate,
-  "id" | "name" | "is_default" | "width_mm" | "height_mm" | "front" | "back"
+  "id" | "name" | "member_type" | "is_default" | "width_mm" | "height_mm" | "front" | "back"
 >;
 
 /** A tiny submit button rendered inside a per-action <form>. */
@@ -65,9 +70,12 @@ function QrMock({ className }: { className: string }) {
 export default function TemplateCard({
   template,
   logo,
+  isSchoolDefault = false,
 }: {
   template: TemplateCardData;
   logo?: string | null;
+  /** True when this template is the school-wide default for its member_type. */
+  isSchoolDefault?: boolean;
 }) {
   const reduce = useReducedMotion();
 
@@ -142,8 +150,14 @@ export default function TemplateCard({
       {/* Meta + actions */}
       <div className="flex flex-1 flex-col">
         <div className="px-4 pt-3">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate font-medium text-slate-800">{template.name}</h3>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <h3 className="mr-0.5 truncate font-medium text-slate-800">{template.name}</h3>
+            <span className="badge shrink-0 bg-slate-100 text-slate-600">
+              {template.member_type === "staff" ? "Staff" : "Student"}
+            </span>
+            {isSchoolDefault && (
+              <span className="badge shrink-0 bg-teal-50 text-teal-700">✓ School template</span>
+            )}
             {template.is_default && (
               <span className="badge shrink-0 gap-1 bg-teal-50 text-teal-700">
                 <Star className="h-3 w-3 fill-current" />
@@ -156,6 +170,17 @@ export default function TemplateCard({
             {elementCount} element{elementCount === 1 ? "" : "s"}
           </p>
         </div>
+
+        {!isSchoolDefault && (
+          <form
+            action={setSchoolTemplate.bind(null, template.id, template.member_type)}
+            className="mt-3 px-4"
+          >
+            <button type="submit" className="btn-primary btn-sm w-full">
+              Use for whole school
+            </button>
+          </form>
+        )}
 
         <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 px-4 py-2.5">
           <Link

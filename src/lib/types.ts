@@ -23,6 +23,10 @@ export interface School {
   academic_year: string | null;
   primary_color: string | null;
   secondary_color: string | null;
+  /** Default id_template applied to students without an explicit template_id. */
+  student_template_id: string | null;
+  /** Default id_template applied to staff without an explicit template_id. */
+  staff_template_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -163,6 +167,8 @@ export interface IdTemplate {
   id: string;
   school_id: string;
   name: string;
+  /** Which member type this template is designed for. */
+  member_type: MemberType;
   width_mm: number;
   height_mm: number;
   dpi: number;

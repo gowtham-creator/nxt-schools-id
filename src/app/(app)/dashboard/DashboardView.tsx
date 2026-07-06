@@ -7,9 +7,12 @@ import {
   Users,
   UserCog,
   Camera,
+  Check,
   ImageUp,
   IdCard,
+  LayoutTemplate,
   Send,
+  Settings,
   Printer,
   ChevronRight,
   type LucideIcon,
@@ -40,10 +43,31 @@ export interface DashboardMetrics {
   printed: number;
 }
 
+/** Serializable onboarding flags computed by the server component. */
+export interface SetupFlags {
+  /** Logo + phone saved on the school (Settings). */
+  branded: boolean;
+  /** A school-wide student template has been picked (Templates). */
+  templatesChosen: boolean;
+  /** At least one member exists. */
+  studentsAdded: boolean;
+  /** At least one ID card has been generated. */
+  cardsGenerated: boolean;
+}
+
 interface Hero {
   label: string;
   display: string;
   icon: LucideIcon;
+}
+
+interface SetupStep {
+  done: boolean;
+  icon: LucideIcon;
+  label: string;
+  desc: string;
+  href: string;
+  cta: string;
 }
 
 interface Stage {
@@ -56,11 +80,49 @@ interface Stage {
 export default function DashboardView({
   metrics,
   analytics,
+  setup,
 }: {
   metrics: DashboardMetrics;
   analytics: AnalyticsData;
+  setup: SetupFlags;
 }) {
   const reduce = useReducedMotion();
+
+  const steps: SetupStep[] = [
+    {
+      done: setup.branded,
+      icon: Settings,
+      label: "Brand your school",
+      desc: "Add your logo, address & phone",
+      href: "/settings",
+      cta: "Settings",
+    },
+    {
+      done: setup.templatesChosen,
+      icon: LayoutTemplate,
+      label: "Choose templates",
+      desc: "Pick student & staff ID designs",
+      href: "/templates",
+      cta: "Templates",
+    },
+    {
+      done: setup.studentsAdded,
+      icon: Users,
+      label: "Add members",
+      desc: "Add students and photos",
+      href: "/members",
+      cta: "Members",
+    },
+    {
+      done: setup.cardsGenerated,
+      icon: IdCard,
+      label: "Generate cards",
+      desc: "Generate & print cards",
+      href: "/members",
+      cta: "Generate",
+    },
+  ];
+  const showSetup = steps.some((s) => !s.done);
 
   const pctText = (n: number): string => `${Math.round(n * 100)}%`;
 
@@ -125,6 +187,46 @@ export default function DashboardView({
           Your ID card production funnel at a glance.
         </p>
       </motion.div>
+
+      {/* Get started — onboarding checklist, shown until every step is done */}
+      {showSetup && (
+        <motion.div variants={item} className="card mt-6 p-6">
+          <h2 className="text-sm font-semibold text-slate-900">Get started</h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Four quick steps to your first printed ID cards.
+          </p>
+          <ol className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {steps.map((s, i) => (
+              <li key={s.label} className="flex gap-3">
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                    s.done
+                      ? "bg-emerald-50 text-emerald-600"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
+                  aria-label={s.done ? "Done" : `Step ${i + 1}`}
+                >
+                  {s.done ? <Check className="h-4 w-4" /> : i + 1}
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
+                    <s.icon className="h-4 w-4 shrink-0 text-slate-400" />
+                    {s.label}
+                  </div>
+                  <p className="mt-0.5 text-xs text-slate-500">{s.desc}</p>
+                  <Link
+                    href={s.href}
+                    className="mt-1 inline-flex items-center gap-0.5 text-xs font-medium text-teal-700 hover:text-teal-800"
+                  >
+                    {s.cta}
+                    <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </motion.div>
+      )}
 
       {/* Hero stat cards */}
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
