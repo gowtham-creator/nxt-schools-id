@@ -73,12 +73,12 @@ const existing = (await q(`app_users?id=eq.${user.id}&select=id`))[0];
 if (existing) {
   await q(`app_users?id=eq.${user.id}`, {
     method: "PATCH",
-    body: JSON.stringify({ school_id: school.id, role: "super_admin", full_name: `${name} Admin` }),
+    body: JSON.stringify({ school_id: school.id, role: "admin", full_name: `${name} Admin` }),
   });
 } else {
   await q("app_users", {
     method: "POST",
-    body: JSON.stringify({ id: user.id, school_id: school.id, role: "super_admin", full_name: `${name} Admin` }),
+    body: JSON.stringify({ id: user.id, school_id: school.id, role: "admin", full_name: `${name} Admin` }),
   });
 }
 console.log("profile linked: super_admin @", name);
