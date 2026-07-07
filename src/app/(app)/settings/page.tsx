@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireRole, getProfile } from "@/lib/auth";
 import type { School } from "@/lib/types";
-import { updateSchool } from "./actions";
+import { updateSchool, uploadSchoolLogo } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -144,30 +144,43 @@ export default async function SettingsPage({
         </div>
 
         <div className="border-t border-slate-200 pt-5">
-          <label className="field-label">Logo</label>
-          <div className="mt-2 flex items-center gap-4">
-            {school?.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={school.logo_url}
-                alt="School logo"
-                className="h-16 w-16 rounded-md border border-slate-200 object-contain"
-              />
-            ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-md border border-dashed border-slate-300 text-xs text-slate-400">
-                None
-              </div>
-            )}
-            <p className="text-xs text-slate-400">
-              Logo upload: settings &gt; branding (coming soon), stored in the logos bucket.
-            </p>
-          </div>
-        </div>
-
-        <div className="border-t border-slate-200 pt-5">
           <button className="btn-primary">
             Save changes
           </button>
+        </div>
+      </form>
+
+      {/* Logo — its own form: file uploads can't nest inside the details form */}
+      <form action={uploadSchoolLogo} className="card mt-5 p-6">
+        <label htmlFor="logo" className="field-label">School logo</label>
+        <div className="mt-2 flex flex-wrap items-center gap-5">
+          {school?.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={school.logo_url}
+              alt="School logo"
+              className="h-16 w-auto max-w-40 rounded-md border border-slate-200 bg-white object-contain p-1"
+            />
+          ) : (
+            <div className="flex h-16 w-24 items-center justify-center rounded-md border border-dashed border-slate-300 text-xs text-slate-400">
+              No logo yet
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <input
+              id="logo"
+              name="logo"
+              type="file"
+              required
+              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              className="block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-50"
+            />
+            <p className="field-hint">
+              PNG, JPG, SVG or WebP · max 2 MB · transparent PNG looks best. It appears on
+              every generated ID card automatically.
+            </p>
+          </div>
+          <button className="btn-primary btn-sm shrink-0">Upload logo</button>
         </div>
       </form>
     </div>

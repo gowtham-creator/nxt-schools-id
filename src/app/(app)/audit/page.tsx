@@ -27,6 +27,7 @@ const ACTION_META: Record<string, { label: string; className: string }> = {
   "user.removed": { label: "User removed", className: "bg-red-50 text-red-700" },
   "template.created": { label: "Template created", className: "bg-violet-50 text-violet-700" },
   "template.deleted": { label: "Template deleted", className: "bg-red-50 text-red-700" },
+  "school.onboarded": { label: "School onboarded", className: "bg-violet-50 text-violet-700" },
 };
 
 function actionMeta(action: string): { label: string; className: string } {

@@ -7,6 +7,7 @@ import NavLink from "./NavLink";
 export const dynamic = "force-dynamic";
 
 const NAV: { href: string; label: string; roles?: AppRole[] }[] = [
+  { href: "/platform", label: "Platform", roles: ["super_admin"] },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/branches", label: "Branches", roles: ["super_admin", "admin"] },
   { href: "/academic-years", label: "Academic Years", roles: ["super_admin", "admin"] },
