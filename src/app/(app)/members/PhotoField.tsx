@@ -2,10 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { PhotoCapture } from "./PhotoCapture";
-import { uploadMemberPhoto } from "./photo-actions";
+import { uploadMemberPhoto, removeMemberPhoto } from "./photo-actions";
 
 type Props = {
   initialUrl?: string | null;
+  /** Present when editing an existing member — enables server-side replace/remove. */
+  memberId?: string | null;
 };
 
 /** Client-side upload guard: 2 MB max, JPG/PNG only (mirrors the server action). */
@@ -15,10 +17,10 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
 /**
  * Circular photo control for MemberForm. Holds the current photo URL in a
  * hidden <input name="photo_url"> (so the form still submits photo_url), and
- * lets the user upload a file or capture from the webcam. Both paths produce a
- * Blob/File that is uploaded via the uploadMemberPhoto server action.
+ * lets the user upload a file or capture from the webcam. When `memberId` is
+ * set (edit mode) uploads persist immediately and Remove deletes server-side.
  */
-export function PhotoField({ initialUrl }: Props) {
+export function PhotoField({ initialUrl, memberId }: Props) {
   const [photoUrl, setPhotoUrl] = useState<string>(initialUrl ?? "");
   const [showCamera, setShowCamera] = useState(false);
   const [error, setError] = useState<string>("");
@@ -28,6 +30,7 @@ export function PhotoField({ initialUrl }: Props) {
     setError("");
     const fd = new FormData();
     fd.append("photo", file, filename);
+    if (memberId) fd.append("member_id", memberId);
     startTransition(async () => {
       try {
         const { url, error: uploadError } = await uploadMemberPhoto(fd);
@@ -39,6 +42,23 @@ export function PhotoField({ initialUrl }: Props) {
         setShowCamera(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Upload failed");
+      }
+    });
+  }
+
+  function remove() {
+    setError("");
+    // Clear the field immediately for a responsive feel; delete server-side too
+    // when we know the member (edit mode).
+    setPhotoUrl("");
+    setShowCamera(false);
+    if (!memberId) return;
+    startTransition(async () => {
+      try {
+        const { ok, error: removeError } = await removeMemberPhoto(memberId);
+        if (!ok) setError(removeError ?? "Could not remove photo");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not remove photo");
       }
     });
   }
@@ -72,10 +92,8 @@ export function PhotoField({ initialUrl }: Props) {
       </div>
 
       <div className="mt-3 flex flex-col items-center gap-1.5">
-        <label
-          className={`btn-secondary btn-sm ${pending ? "opacity-50" : ""}`}
-        >
-          {pending ? "Uploading…" : "Upload photo"}
+        <label className={`btn-secondary btn-sm ${pending ? "opacity-50" : ""}`}>
+          {pending ? "Working…" : photoUrl ? "Change photo" : "Upload photo"}
           <input
             type="file"
             accept="image/jpeg,image/png"
@@ -84,14 +102,26 @@ export function PhotoField({ initialUrl }: Props) {
             disabled={pending}
           />
         </label>
-        <button
-          type="button"
-          onClick={() => setShowCamera((v) => !v)}
-          disabled={pending}
-          className="btn-ghost btn-sm"
-        >
-          {showCamera ? "Close camera" : "Use camera"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowCamera((v) => !v)}
+            disabled={pending}
+            className="btn-ghost btn-sm"
+          >
+            {showCamera ? "Close camera" : "Use camera"}
+          </button>
+          {photoUrl && (
+            <button
+              type="button"
+              onClick={remove}
+              disabled={pending}
+              className="btn-sm cursor-pointer text-sm font-medium text-red-600 hover:text-red-700"
+            >
+              Remove
+            </button>
+          )}
+        </div>
         <p className="text-xs text-slate-400">Passport size (35×45), JPG/PNG, max 2 MB.</p>
       </div>
 

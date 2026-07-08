@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { MEMBER_TYPE_LABELS } from "@/lib/constants";
 import type { PipelineStatus } from "@/lib/types";
 import { deleteMember } from "./actions";
+import { removeMemberPhoto } from "./photo-actions";
 import {
   generateCard,
   advanceStatus,
@@ -101,6 +102,14 @@ export default function StudentTable({
   };
 
   const ids = () => Array.from(selected);
+
+  /** One-click photo delete from the list (removes the file + clears the field). */
+  const removePhoto = (id: string) => {
+    startTransition(async () => {
+      await removeMemberPhoto(id);
+      router.refresh();
+    });
+  };
 
   return (
     <>
@@ -266,8 +275,25 @@ export default function StudentTable({
                   </td>
                   <td className="px-4 py-2">
                     {m.photo_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.photo_url} alt="" className="h-10 w-10 rounded-full object-cover" />
+                      <div className="group relative h-10 w-10">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={m.photo_url}
+                          alt=""
+                          loading="lazy"
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          title="Remove photo"
+                          aria-label={`Remove ${m.first_name}'s photo`}
+                          disabled={pending}
+                          onClick={() => removePhoto(m.id)}
+                          className="absolute -right-1 -top-1 hidden h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-red-600 text-[11px] leading-none text-white shadow group-hover:flex"
+                        >
+                          ×
+                        </button>
+                      </div>
                     ) : (
                       <div className="h-10 w-10 rounded-full bg-slate-100" />
                     )}

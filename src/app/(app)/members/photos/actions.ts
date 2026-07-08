@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { versionedPublicUrl } from "../photo-utils";
 
 /**
  * Auth + school guard shared with the other member actions (mirrors actions.ts).
@@ -37,17 +38,25 @@ function keyFromFilename(name: string): string {
   return base.trim();
 }
 
+/** How many uploads to run at once — keeps a whole-class batch fast without
+ *  hammering the storage API. */
+const CONCURRENCY = 6;
+
 /**
  * Skolors-style bulk photo attach: each file is named by the member's Admission
- * No or Roll No (e.g. `NXT-2025-001.jpg`). We match case-insensitively, upload
- * matched files to the public `photos` bucket at `${schoolId}/${memberId}.jpg`,
- * and set members.photo_url. Returns match counts + unmatched filenames.
+ * No or Roll No (e.g. `NXT-2025-001.jpg`). We match case-insensitively, overwrite
+ * the member's photo at a stable path, and store a fresh cache-busted URL so a
+ * re-upload replaces the old photo instantly (no stale CDN copy). Uploads run
+ * in bounded-concurrency batches for speed. Returns match counts + unmatched
+ * filenames.
  */
 export async function bulkUploadPhotos(fd: FormData): Promise<BulkUploadResult> {
   const { supabase, schoolId } = await ctx();
   if (!schoolId) throw new Error("No school assigned to your account");
 
-  const files = fd.getAll("photos") as File[];
+  const files = (fd.getAll("photos") as File[]).filter(
+    (f): f is File => !!f && typeof f !== "string",
+  );
 
   const { data: members, error: membersErr } = await supabase
     .from("members")
@@ -62,38 +71,46 @@ export async function bulkUploadPhotos(fd: FormData): Promise<BulkUploadResult> 
     if (m.roll_no) byKey.set(m.roll_no.trim().toLowerCase(), m.id);
   }
 
-  let matched = 0;
   const unmatched: string[] = [];
 
-  for (const file of files) {
-    if (!file || typeof file === "string") continue;
+  /** Attach one file to its matched member; returns true on success. */
+  async function attach(file: File): Promise<boolean> {
     const key = keyFromFilename(file.name).toLowerCase();
     const memberId = key ? byKey.get(key) : undefined;
     if (!memberId) {
       unmatched.push(file.name);
-      continue;
+      return false;
     }
 
     const bytes = new Uint8Array(await file.arrayBuffer());
     const path = `${schoolId}/${memberId}.jpg`;
-    const { error: uploadErr } = await supabase.storage
-      .from("photos")
-      .upload(path, bytes, { upsert: true, contentType: file.type || "image/jpeg" });
+    const { error: uploadErr } = await supabase.storage.from("photos").upload(path, bytes, {
+      upsert: true,
+      contentType: file.type || "image/jpeg",
+      cacheControl: "31536000",
+    });
     if (uploadErr) {
       unmatched.push(file.name);
-      continue;
+      return false;
     }
 
     const { data } = supabase.storage.from("photos").getPublicUrl(path);
     const { error: updateErr } = await supabase
       .from("members")
-      .update({ photo_url: data.publicUrl })
+      .update({ photo_url: versionedPublicUrl(data.publicUrl) })
       .eq("id", memberId);
     if (updateErr) {
       unmatched.push(file.name);
-      continue;
+      return false;
     }
-    matched += 1;
+    return true;
+  }
+
+  let matched = 0;
+  for (let i = 0; i < files.length; i += CONCURRENCY) {
+    const batch = files.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map((f) => attach(f).catch(() => false)));
+    matched += results.filter(Boolean).length;
   }
 
   revalidatePath("/members");

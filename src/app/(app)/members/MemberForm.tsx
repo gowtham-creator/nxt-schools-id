@@ -59,7 +59,7 @@ export function MemberForm({ action, classes, member, submitLabel = "Save member
 
       {/* Photo + core */}
       <div className="flex gap-6">
-        <PhotoField initialUrl={member?.photo_url ?? null} />
+        <PhotoField initialUrl={member?.photo_url ?? null} memberId={member?.id ?? null} />
 
         <div className="grid flex-1 grid-cols-2 gap-4">
           <Field label="First name *" htmlFor="first_name">
