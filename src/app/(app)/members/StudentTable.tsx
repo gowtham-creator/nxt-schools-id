@@ -275,7 +275,7 @@ export default function StudentTable({
                   </td>
                   <td className="px-4 py-2">
                     {m.photo_url ? (
-                      <div className="group relative h-10 w-10">
+                      <div className="relative h-10 w-10">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={m.photo_url}
@@ -283,13 +283,14 @@ export default function StudentTable({
                           loading="lazy"
                           className="h-10 w-10 rounded-full object-cover"
                         />
+                        {/* Always visible (works on touch/tablets), turns red on hover. */}
                         <button
                           type="button"
                           title="Remove photo"
                           aria-label={`Remove ${m.first_name}'s photo`}
                           disabled={pending}
                           onClick={() => removePhoto(m.id)}
-                          className="absolute -right-1 -top-1 hidden h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-red-600 text-[11px] leading-none text-white shadow group-hover:flex"
+                          className="absolute -right-1 -top-1 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-slate-500/90 text-[11px] leading-none text-white shadow ring-1 ring-white hover:bg-red-600 disabled:opacity-50"
                         >
                           ×
                         </button>
