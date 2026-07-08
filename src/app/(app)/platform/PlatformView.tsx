@@ -251,25 +251,23 @@ export default function PlatformView({
       {/* Tenant table */}
       <div className="card mt-3 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] text-sm">
+          <table className="w-full min-w-[780px] text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-4 py-3 font-medium">School</th>
                 <th className="px-4 py-3 font-medium">Templates</th>
                 <th className="px-4 py-3 text-right font-medium">Students</th>
                 <th className="px-4 py-3 text-right font-medium">Staff</th>
-                <th className="px-4 py-3 text-right font-medium">Generated</th>
-                <th className="px-4 py-3 text-right font-medium">Printed</th>
+                <th className="px-4 py-3 text-right font-medium">Cards</th>
                 <th className="px-4 py-3 text-right font-medium">Users</th>
-                <th className="px-4 py-3 text-right font-medium">This week</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3 text-right font-medium">Access</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                     No schools match this view.
                   </td>
                 </tr>
@@ -323,10 +321,12 @@ export default function PlatformView({
                     </td>
                     <td className={`px-4 py-3 text-right tabular-nums ${dim}`}>{s.students}</td>
                     <td className={`px-4 py-3 text-right tabular-nums ${dim}`}>{s.staff}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${dim}`}>{s.generated}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${dim}`}>{s.printed}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      <span className={dim}>{s.generated}</span>
+                      <span className="text-slate-300"> / </span>
+                      <span className="text-slate-400">{s.printed}</span>
+                    </td>
                     <td className={`px-4 py-3 text-right tabular-nums ${dim}`}>{s.users}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${dim}`}>{s.weekActivity}</td>
                     <td className="px-4 py-3">
                       {s.suspended ? (
                         <span className="badge bg-rose-50 text-rose-700">Suspended</span>
