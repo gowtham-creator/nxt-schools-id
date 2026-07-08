@@ -51,7 +51,7 @@ export default async function PlatformPage({
 
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [schoolsRes, membersRes, usersRes, auditRes] = await Promise.all([
+  const [schoolsRes, membersRes, usersRes, auditRes, authRes] = await Promise.all([
     admin
       .from("schools")
       .select(
@@ -62,18 +62,39 @@ export default async function PlatformPage({
       .from("members")
       .select("school_id, member_type, pipeline_status, photo_url")
       .limit(20000),
-    admin.from("app_users").select("school_id"),
+    admin.from("app_users").select("id, school_id, role"),
     admin
       .from("audit_log")
       .select("school_id, created_at")
       .eq("action", "card.generated")
       .gte("created_at", since),
+    admin.auth.admin.listUsers({ perPage: 1000 }),
   ]);
 
   const schools = (schoolsRes.data ?? []) as SchoolRow[];
   const members = (membersRes.data ?? []) as MemberRow[];
-  const appUsers = (usersRes.data ?? []) as { school_id: string | null }[];
+  const appUsers = (usersRes.data ?? []) as {
+    id: string;
+    school_id: string | null;
+    role: string;
+  }[];
   const weekAudit = (auditRes.data ?? []) as { school_id: string | null }[];
+
+  // A tenant is "suspended" when all its non-super-admin logins are banned in
+  // auth. Build the banned set once, then the per-tenant login lists.
+  const nowMs = Date.now();
+  const bannedIds = new Set<string>();
+  for (const u of authRes.data?.users ?? []) {
+    const bannedUntil = (u as { banned_until?: string | null }).banned_until;
+    if (bannedUntil && new Date(bannedUntil).getTime() > nowMs) bannedIds.add(u.id);
+  }
+  const tenantLoginIds = new Map<string, string[]>();
+  for (const u of appUsers) {
+    if (!u.school_id || u.role === "super_admin") continue;
+    const list = tenantLoginIds.get(u.school_id) ?? [];
+    list.push(u.id);
+    tenantLoginIds.set(u.school_id, list);
+  }
 
   // Aggregate everything in JS — one pass per result set.
   const tally = new Map<string, Tally>();
@@ -118,6 +139,7 @@ export default async function PlatformPage({
   const perSchool: PlatformSchool[] = schools
     .map((s) => {
       const t = tally.get(s.id);
+      const loginIds = tenantLoginIds.get(s.id) ?? [];
       return {
         id: s.id,
         name: s.name,
@@ -132,6 +154,7 @@ export default async function PlatformPage({
         users: usersBySchool.get(s.id) ?? 0,
         weekActivity: weekBySchool.get(s.id) ?? 0,
         templatesReady: Boolean(s.student_template_id && s.staff_template_id),
+        suspended: loginIds.length > 0 && loginIds.every((id) => bannedIds.has(id)),
       };
     })
     .sort((a, b) => b.students - a.students);

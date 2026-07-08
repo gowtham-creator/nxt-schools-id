@@ -28,6 +28,8 @@ const ACTION_META: Record<string, { label: string; className: string }> = {
   "template.created": { label: "Template created", className: "bg-violet-50 text-violet-700" },
   "template.deleted": { label: "Template deleted", className: "bg-red-50 text-red-700" },
   "school.onboarded": { label: "School onboarded", className: "bg-violet-50 text-violet-700" },
+  "school.suspended": { label: "School suspended", className: "bg-rose-50 text-rose-700" },
+  "school.reactivated": { label: "School reactivated", className: "bg-emerald-50 text-emerald-700" },
 };
 
 function actionMeta(action: string): { label: string; className: string } {

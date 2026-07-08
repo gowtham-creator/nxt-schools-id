@@ -233,5 +233,48 @@ export async function onboardSchool(fd: FormData) {
 
   // g) Done.
   revalidatePath("/platform");
-  redirect(`/platform?ok=${encodeURIComponent(`${name} onboarded — login ${email}`)}`);
+  redirect(`/platform?ok=${encodeURIComponent(`${name} onboarded, login ${email}`)}`);
+}
+
+/**
+ * Suspend or reactivate a whole school's access. We ban (or un-ban) every
+ * non-super-admin login for that tenant at the auth layer: a banned user can't
+ * sign in and can't refresh a token, so access is cut without touching data.
+ * Super admins are never banned. Called from the Platform console.
+ */
+export async function setSchoolAccess(
+  schoolId: string,
+  suspend: boolean,
+): Promise<{ ok: boolean; error: string | null }> {
+  const me = await requireRole(["super_admin"]);
+  const admin = createAdminClient();
+
+  const { data: users, error: usersErr } = await admin
+    .from("app_users")
+    .select("id, role")
+    .eq("school_id", schoolId)
+    .in("role", ["admin", "operator"]);
+  if (usersErr) return { ok: false, error: usersErr.message };
+
+  const banDuration = suspend ? "876000h" : "none"; // ~100 years, or lift the ban
+  let failed = 0;
+  for (const u of (users ?? []) as { id: string; role: string }[]) {
+    const { error } = await admin.auth.admin.updateUserById(u.id, {
+      ban_duration: banDuration,
+    });
+    if (error) failed += 1;
+  }
+
+  await logAudit(admin, {
+    schoolId,
+    actorId: me.id,
+    action: suspend ? "school.suspended" : "school.reactivated",
+    targetType: "school",
+    targetId: schoolId,
+    meta: { affected: (users ?? []).length, failed },
+  });
+
+  revalidatePath("/platform");
+  if (failed > 0) return { ok: false, error: `${failed} login(s) could not be updated` };
+  return { ok: true, error: null };
 }
