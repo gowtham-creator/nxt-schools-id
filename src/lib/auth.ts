@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/lib/types";
@@ -15,8 +16,11 @@ export interface Profile {
 /**
  * Resolve the current auth user and their app_users profile.
  * Redirects to /login when there is no session.
+ *
+ * Wrapped in React `cache()` so the layout and the page in a single render share
+ * ONE auth + profile round trip instead of each making their own.
  */
-export async function getProfile() {
+export const getProfile = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,7 +41,7 @@ export async function getProfile() {
   };
 
   return { user, profile };
-}
+});
 
 /**
  * Ensure the current user holds one of `roles`.

@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { ROLE_LABELS } from "@/lib/constants";
+import { getProfile } from "@/lib/auth";
 import type { AppRole } from "@/lib/types";
 import NavLink from "./NavLink";
 
@@ -24,19 +23,9 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("app_users")
-    .select("full_name, role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const role = (profile?.role ?? "operator") as AppRole;
+  // Cached per request: shared with any page that calls getProfile()/requireRole().
+  const { user, profile } = await getProfile();
+  const role = profile.role;
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -58,7 +47,7 @@ export default async function AppLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
           <div className="text-sm text-slate-500">
-            {profile?.full_name ?? user.email} ·{" "}
+            {profile.full_name ?? user.email} ·{" "}
             <span className="font-medium text-slate-700">{ROLE_LABELS[role]}</span>
           </div>
           <form action="/auth/signout" method="post">
