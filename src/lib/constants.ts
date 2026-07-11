@@ -53,6 +53,9 @@ export const BLOOD_GROUPS = [
   "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-",
 ] as const;
 
+/** Class sections (A–H) offered in the member form's Section dropdown. */
+export const SECTIONS = ["A", "B", "C", "D", "E", "F", "G", "H"] as const;
+
 /**
  * The standard school grade ladder (India), in display order. Seeded as
  * `classes` for every school so the Class dropdown is populated on day one.

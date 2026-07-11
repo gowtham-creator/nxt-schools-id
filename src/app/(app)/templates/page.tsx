@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getProfile } from "@/lib/auth";
 import { createBlankTemplate } from "./actions";
 import TemplateCard from "./TemplateCard";
 import type { IdTemplate } from "@/lib/types";
@@ -12,7 +14,8 @@ export default async function TemplatesPage({
 }) {
   const sp = await searchParams;
   const supabase = await createClient();
-  const [{ data: school }, { data: rows }] = await Promise.all([
+  const [{ profile }, { data: school }, { data: rows }] = await Promise.all([
+    getProfile(),
     supabase
       .from("schools")
       .select("logo_url, student_template_id, staff_template_id")
@@ -27,6 +30,14 @@ export default async function TemplatesPage({
     student: (school?.student_template_id ?? null) as string | null,
     staff: (school?.staff_template_id ?? null) as string | null,
   };
+
+  // Super admins can push any template to other schools — load the roster.
+  let schools: { id: string; name: string }[] = [];
+  if (profile.role === "super_admin") {
+    const admin = createAdminClient();
+    const { data: schoolRows } = await admin.from("schools").select("id, name").order("name");
+    schools = (schoolRows ?? []) as { id: string; name: string }[];
+  }
 
   return (
     <div>
@@ -59,6 +70,7 @@ export default async function TemplatesPage({
               template={t}
               logo={logo}
               isSchoolDefault={schoolDefaults[t.member_type] === t.id}
+              schools={schools}
             />
           ))}
         </div>

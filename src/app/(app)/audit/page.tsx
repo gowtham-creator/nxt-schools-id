@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
+import AutoRefresh from "../AutoRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,8 @@ type AuditRow = {
   changes: Record<string, unknown> | null;
   created_at: string;
   actor: { full_name: string | null } | null;
+  /** Owning school — only joined/rendered for the platform-wide super-admin view. */
+  school?: { name: string | null } | null;
 };
 
 /** Human labels + badge colors per audit action (falls back for unknown ones). */
@@ -27,9 +31,11 @@ const ACTION_META: Record<string, { label: string; className: string }> = {
   "user.removed": { label: "User removed", className: "bg-red-50 text-red-700" },
   "template.created": { label: "Template created", className: "bg-violet-50 text-violet-700" },
   "template.deleted": { label: "Template deleted", className: "bg-red-50 text-red-700" },
+  "template.pushed": { label: "Template pushed", className: "bg-emerald-50 text-emerald-700" },
   "school.onboarded": { label: "School onboarded", className: "bg-violet-50 text-violet-700" },
   "school.suspended": { label: "School suspended", className: "bg-rose-50 text-rose-700" },
   "school.reactivated": { label: "School reactivated", className: "bg-emerald-50 text-emerald-700" },
+  "school.logo_updated": { label: "Logo updated", className: "bg-teal-50 text-teal-700" },
 };
 
 function actionMeta(action: string): { label: string; className: string } {
@@ -73,26 +79,49 @@ function summarizeChanges(changes: Record<string, unknown> | null): string {
 
 export default async function AuditPage() {
   const me = await requireRole(["super_admin", "admin"]);
-  const supabase = await createClient();
+  const isSuperAdmin = me.role === "super_admin";
 
-  const { data, error } = await supabase
-    .from("audit_log")
-    .select(
-      "id, action, entity_type, entity_id, changes, created_at, actor:actor_id(full_name)",
-    )
-    .eq("school_id", me.school_id)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(100);
+  let rows: AuditRow[] = [];
+  let error: { message: string } | null = null;
 
-  const rows = (data ?? []) as unknown as AuditRow[];
+  if (isSuperAdmin) {
+    // Platform-wide feed via the service-role client (bypasses RLS), joined to the
+    // owning school and the actor so each row shows who did what, and where.
+    const { data, error: e } = await createAdminClient()
+      .from("audit_log")
+      .select(
+        "id, action, entity_type, entity_id, changes, created_at, actor:actor_id(full_name), school:school_id(name)",
+      )
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(150);
+    rows = (data ?? []) as unknown as AuditRow[];
+    error = e ? { message: e.message } : null;
+  } else {
+    // Single-school feed through the RLS client (unchanged query + columns).
+    const supabase = await createClient();
+    const { data, error: e } = await supabase
+      .from("audit_log")
+      .select(
+        "id, action, entity_type, entity_id, changes, created_at, actor:actor_id(full_name)",
+      )
+      .eq("school_id", me.school_id)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(100);
+    rows = (data ?? []) as unknown as AuditRow[];
+    error = e ? { message: e.message } : null;
+  }
 
   return (
     <div>
+      <AutoRefresh seconds={12} />
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Audit log</h1>
         <p className="mt-1 text-sm text-slate-500">
-          The 100 most recent actions taken across your school.
+          {isSuperAdmin
+            ? "The most recent actions across every school."
+            : "The 100 most recent actions taken across your school."}
         </p>
       </div>
 
@@ -107,6 +136,9 @@ export default async function AuditPage() {
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
               <th className="px-4 py-3 font-medium">When</th>
+              {isSuperAdmin && (
+                <th className="px-4 py-3 font-medium">School</th>
+              )}
               <th className="px-4 py-3 font-medium">Actor</th>
               <th className="px-4 py-3 font-medium">Action</th>
               <th className="px-4 py-3 font-medium">Target / details</th>
@@ -115,7 +147,7 @@ export default async function AuditPage() {
           <tbody className="divide-y divide-slate-100">
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={isSuperAdmin ? 5 : 4} className="px-4 py-12 text-center text-slate-400">
                   No activity recorded yet. Actions like generating cards, editing
                   members and managing users will appear here.
                 </td>
@@ -131,6 +163,13 @@ export default async function AuditPage() {
                       {relativeTime(row.created_at)}
                     </span>
                   </td>
+                  {isSuperAdmin && (
+                    <td className="px-4 py-3 font-medium text-slate-700">
+                      {row.school?.name ?? (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-3 font-medium text-slate-800">
                     {row.actor?.full_name ?? (
                       <span className="text-slate-400">System</span>

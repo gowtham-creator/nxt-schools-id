@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardAnalytics } from "@/lib/analytics";
-import type { PipelineStatus } from "@/lib/types";
+import type { AppRole, PipelineStatus } from "@/lib/types";
 import DashboardView, { type DashboardMetrics, type SetupFlags } from "./DashboardView";
 
 export const dynamic = "force-dynamic";
@@ -26,11 +26,12 @@ export default async function DashboardPage() {
   const { data: profile } = user
     ? await supabase
         .from("app_users")
-        .select("school_id")
+        .select("school_id, role")
         .eq("id", user.id)
         .single()
     : { data: null };
   const schoolId = (profile?.school_id ?? null) as string | null;
+  const role = (profile?.role ?? "operator") as AppRole;
 
   // Fresh head-count query against members for each funnel filter.
   const members = () =>
@@ -45,6 +46,7 @@ export default async function DashboardPage() {
     sentForPrinting,
     printed,
     analytics,
+    callerLogoUrl,
   ] = await Promise.all([
     supabase
       .from("schools")
@@ -77,6 +79,15 @@ export default async function DashboardPage() {
       .eq("pipeline_status", "printed")
       .then((r) => r.count ?? 0),
     getDashboardAnalytics(supabase, schoolId),
+    // The caller's own school logo (by id) — drives the "upload your logo" prompt.
+    schoolId
+      ? supabase
+          .from("schools")
+          .select("logo_url")
+          .eq("id", schoolId)
+          .maybeSingle()
+          .then((r) => (r.data?.logo_url ?? null) as string | null)
+      : Promise.resolve<string | null>(null),
   ]);
 
   // Serializable snapshot of the exact values computed above.
@@ -98,5 +109,16 @@ export default async function DashboardPage() {
     cardsGenerated: idGenerated > 0,
   };
 
-  return <DashboardView metrics={metrics} analytics={analytics} setup={setup} />;
+  // Prompt admins / super-admins to upload a logo when their school has none yet.
+  const needsLogo =
+    !callerLogoUrl && (role === "admin" || role === "super_admin");
+
+  return (
+    <DashboardView
+      metrics={metrics}
+      analytics={analytics}
+      setup={setup}
+      needsLogo={needsLogo}
+    />
+  );
 }

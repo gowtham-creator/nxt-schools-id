@@ -24,6 +24,7 @@ import StatusDonut from "./charts/StatusDonut";
 import GeneratedAreaChart from "./charts/GeneratedAreaChart";
 import BranchBarChart from "./charts/BranchBarChart";
 import ClassBarChart from "./charts/ClassBarChart";
+import AutoRefresh from "../AutoRefresh";
 
 /** Serializable metrics computed by the server component. */
 export interface DashboardMetrics {
@@ -81,10 +82,12 @@ export default function DashboardView({
   metrics,
   analytics,
   setup,
+  needsLogo,
 }: {
   metrics: DashboardMetrics;
   analytics: AnalyticsData;
   setup: SetupFlags;
+  needsLogo: boolean;
 }) {
   const reduce = useReducedMotion();
 
@@ -180,6 +183,26 @@ export default function DashboardView({
 
   return (
     <motion.div variants={container} initial="hidden" animate="show">
+      <AutoRefresh seconds={15} />
+
+      {/* Upload-your-logo prompt — admins/super-admins whose school has no logo yet */}
+      {needsLogo && (
+        <motion.div
+          variants={item}
+          className="card mb-6 flex flex-wrap items-center gap-4 border-teal-200 bg-teal-50/60 p-5"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+            <ImageUp className="h-5 w-5" />
+          </div>
+          <p className="text-sm font-medium text-slate-800">
+            Add your school logo so it appears on every ID card.
+          </p>
+          <Link href="/settings" className="btn-primary btn-sm ml-auto">
+            Upload logo
+          </Link>
+        </motion.div>
+      )}
+
       {/* Heading */}
       <motion.div variants={item}>
         <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>

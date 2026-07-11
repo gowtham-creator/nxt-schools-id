@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BLOOD_GROUPS, GENDERS, sortClasses } from "@/lib/constants";
+import { BLOOD_GROUPS, GENDERS, SECTIONS, gradeRank } from "@/lib/constants";
 import type { ClassRow, Member } from "@/lib/types";
 import { PhotoField } from "./PhotoField";
 
@@ -51,8 +51,19 @@ export function MemberForm({
 }: Props) {
   const [type, setType] = useState<"student" | "staff">(member?.member_type ?? "student");
 
-  // Class dropdown ordered by grade (Nursery → 12th), not alphabetically.
-  const orderedClasses = sortClasses(classes);
+  // Distinct grade names for the "Class / Grade" select, ordered on the standard
+  // ladder (Nursery → 12th) via gradeRank; unknowns sort last, then alphabetical.
+  const gradeNames = [...new Set(classes.map((c) => c.name))].sort(
+    (a, b) => gradeRank(a) - gradeRank(b) || a.localeCompare(b),
+  );
+
+  // In edit mode, split the member's saved class_id back into grade + section
+  // so the two selects default to the right values.
+  const currentClass = member?.class_id
+    ? classes.find((c) => c.id === member.class_id)
+    : undefined;
+  const defaultGrade = currentClass?.name ?? "";
+  const defaultSection = currentClass?.section ?? "";
 
   // Batch defaults to the member's saved year, else the school's current year.
   const currentYear = academicYears.find((y) => y.is_current);
@@ -118,13 +129,22 @@ export function MemberForm({
         )}
         {type === "student" ? (
           <>
-            <Field label="Class / Grade" htmlFor="class_id">
-              <select id="class_id" name="class_id" defaultValue={member?.class_id ?? ""} className={inputCls}>
+            <Field label="Class / Grade" htmlFor="class_grade">
+              <select id="class_grade" name="class_grade" defaultValue={defaultGrade} className={inputCls}>
                 <option value="">— Select grade —</option>
-                {orderedClasses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {c.section ? ` - ${c.section}` : ""}
+                {gradeNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Section" htmlFor="class_section">
+              <select id="class_section" name="class_section" defaultValue={defaultSection} className={inputCls}>
+                <option value="">— none —</option>
+                {SECTIONS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
                   </option>
                 ))}
               </select>

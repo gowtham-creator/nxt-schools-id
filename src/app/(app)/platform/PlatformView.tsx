@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { Building2, Loader2, Search, UserRoundPlus } from "lucide-react";
 import { onboardSchool, setSchoolAccess } from "./actions";
+import AutoRefresh from "../AutoRefresh";
 
 /** Platform-wide headline numbers computed by the server component. */
 export interface PlatformTotals {
@@ -118,6 +120,8 @@ export default function PlatformView({
 
   return (
     <div>
+      <AutoRefresh seconds={15} />
+
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -299,13 +303,14 @@ export default function PlatformView({
                           </div>
                         )}
                         <div className="min-w-0">
-                          <div
-                            className={`truncate font-medium ${
+                          <Link
+                            href={`/platform/${s.id}`}
+                            className={`block truncate font-medium hover:text-teal-700 hover:underline ${
                               s.suspended ? "text-slate-500" : "text-slate-900"
                             }`}
                           >
                             {s.name}
-                          </div>
+                          </Link>
                           <div className="truncate text-xs text-slate-400">
                             {s.shortName ?? "—"} · joined {JOINED.format(new Date(s.createdAt))}
                           </div>

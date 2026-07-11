@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/auth";
 import type { PipelineStatus } from "@/lib/types";
 import StudentTable, { type MemberRow } from "./StudentTable";
+import { uploadSchoolLogo } from "../settings/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,8 @@ export default async function MembersPage({
 }) {
   const sp = await searchParams;
   const supabase = await createClient();
+  const { profile } = await getProfile();
+  const canUploadLogo = profile.role === "admin" || profile.role === "super_admin";
 
   const activeStatus: PipelineStatus | null = PIPELINE_VALUES.includes(
     sp.status as PipelineStatus,
@@ -94,6 +98,33 @@ export default async function MembersPage({
           <p className="mt-1 text-sm text-slate-500">Students &amp; staff records.</p>
         </div>
         <div className="flex gap-2">
+          {canUploadLogo && (
+            <details className="relative">
+              <summary className="btn-secondary list-none [&::-webkit-details-marker]:hidden">
+                School logo
+              </summary>
+              <form
+                action={uploadSchoolLogo}
+                className="card absolute right-0 z-20 mt-2 w-80 space-y-3 p-4 text-left shadow-lg"
+              >
+                <label htmlFor="logo" className="field-label">
+                  School logo
+                </label>
+                <input
+                  id="logo"
+                  name="logo"
+                  type="file"
+                  required
+                  accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  className="block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-50"
+                />
+                <p className="field-hint">
+                  PNG, JPG, SVG or WebP · max 2 MB. Appears on every generated card.
+                </p>
+                <button className="btn-primary btn-sm">Upload logo</button>
+              </form>
+            </details>
+          )}
           <Link href="/members/photos" className="btn-secondary">
             Bulk Photos
           </Link>

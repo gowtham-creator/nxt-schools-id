@@ -18,9 +18,11 @@ export type AuditAction =
   | "user.removed"
   | "template.created"
   | "template.deleted"
+  | "template.pushed"
   | "school.onboarded"
   | "school.suspended"
-  | "school.reactivated";
+  | "school.reactivated"
+  | "school.logo_updated";
 
 interface LogAuditArgs {
   schoolId: string | null;

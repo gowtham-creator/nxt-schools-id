@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { memberSchema } from "@/lib/validators";
 
 type ImportRow = Record<string, string>;
@@ -24,20 +25,34 @@ export async function importMembers(
   if (!schoolId) return { inserted: 0, failed: rows.length, errors: ["No school assigned to your account"] };
   if (!rows.length) return { inserted: 0, failed: 0, errors: ["No rows to import"] };
 
-  // Resolve class names -> ids (find or create)
+  // Resolve (class, section) -> class id (find or create), scoped to the school.
+  // Uses the service role so classes can be created regardless of the caller's
+  // INSERT rights; every query is scoped explicitly to schoolId.
+  const admin = createAdminClient();
+  const classKey = (name: string, section: string) =>
+    `${name.trim().toLowerCase()}|${section.trim().toLowerCase()}`;
   const classMap = new Map<string, string>();
-  const { data: existing } = await supabase
+  const { data: existing } = await admin
     .from("classes")
-    .select("id,name")
+    .select("id,name,section")
     .eq("school_id", schoolId);
-  for (const c of existing ?? []) classMap.set(c.name.trim().toLowerCase(), c.id);
-  const wanted = [...new Set(rows.map((r) => (r.class ?? "").trim()).filter(Boolean))];
-  for (const name of wanted) {
-    const key = name.toLowerCase();
+  for (const c of existing ?? [])
+    classMap.set(classKey(c.name ?? "", c.section ?? ""), c.id);
+  const wanted = new Map<string, { name: string; section: string }>();
+  for (const r of rows) {
+    const name = (r.class ?? "").trim();
+    if (!name) continue;
+    wanted.set(classKey(name, (r.section ?? "").trim()), {
+      name,
+      section: (r.section ?? "").trim(),
+    });
+  }
+  for (const { name, section } of wanted.values()) {
+    const key = classKey(name, section);
     if (!classMap.has(key)) {
-      const { data } = await supabase
+      const { data } = await admin
         .from("classes")
-        .insert({ school_id: schoolId, name })
+        .insert({ school_id: schoolId, name, section: section || null })
         .select("id")
         .single();
       if (data) classMap.set(key, data.id);
@@ -47,13 +62,13 @@ export async function importMembers(
   const errors: string[] = [];
   const records: Record<string, unknown>[] = [];
   rows.forEach((r, i) => {
-    const className = (r.class ?? "").trim().toLowerCase();
+    const className = (r.class ?? "").trim();
     const candidate = {
       member_type: (r.member_type ?? "student").toLowerCase() === "staff" ? "staff" : "student",
       identifier: r.identifier ?? "",
       first_name: r.first_name ?? "",
       last_name: r.last_name ?? "",
-      class_id: className ? (classMap.get(className) ?? "") : "",
+      class_id: className ? (classMap.get(classKey(className, (r.section ?? "").trim())) ?? "") : "",
       roll_no: r.roll_no ?? "",
       dob: r.dob ?? "",
       gender: r.gender ?? "",

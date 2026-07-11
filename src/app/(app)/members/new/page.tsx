@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { MemberForm } from "../MemberForm";
-import { createMember, createClass } from "../actions";
+import { createMember } from "../actions";
 import type { ClassRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -44,38 +44,6 @@ export default async function NewMemberPage({
           submitLabel="Add member"
         />
       </div>
-
-      <details className="card mt-8 max-w-md p-4">
-        <summary className="cursor-pointer text-sm font-medium text-slate-600 transition-colors duration-150 hover:text-slate-900">
-          + Add a class
-        </summary>
-        <form action={createClass} className="mt-4 grid grid-cols-3 items-end gap-3">
-          <div className="col-span-1">
-            <label htmlFor="class_name" className="field-label">
-              Class
-            </label>
-            <input
-              id="class_name"
-              name="name"
-              placeholder="e.g. Grade 5"
-              required
-              className="field-input"
-            />
-          </div>
-          <div className="col-span-1">
-            <label htmlFor="class_section" className="field-label">
-              Section
-            </label>
-            <input
-              id="class_section"
-              name="section"
-              placeholder="e.g. A"
-              className="field-input"
-            />
-          </div>
-          <button className="btn-primary btn-sm justify-self-start">Add</button>
-        </form>
-      </details>
     </div>
   );
 }

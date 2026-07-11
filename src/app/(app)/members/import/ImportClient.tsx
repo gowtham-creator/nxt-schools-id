@@ -12,6 +12,7 @@ const HEADER_ALIASES: Record<string, string[]> = {
   identifier: ["admission no", "admission number", "admission", "admno", "employee id", "emp id", "id", "identifier", "reg no"],
   member_type: ["type", "member type", "category"],
   class: ["class", "grade", "standard", "class name"],
+  section: ["section", "sec", "division", "div"],
   roll_no: ["roll no", "roll", "roll number"],
   dob: ["dob", "date of birth", "birth date", "birthdate"],
   gender: ["gender", "sex"],
@@ -98,8 +99,8 @@ export function ImportClient() {
   }
 
   function downloadTemplate() {
-    const headers = ["member_type", "first_name", "last_name", "identifier", "class", "roll_no", "dob", "gender", "blood_group", "guardian_name", "guardian_phone", "phone", "email"];
-    const sample = ["student", "Ravi", "Kumar", "NXT-2025-002", "Grade 5", "12", "2014-05-20", "Male", "O+", "Suresh Kumar", "9876543210", "", "ravi@example.com"];
+    const headers = ["member_type", "first_name", "last_name", "identifier", "class", "section", "roll_no", "dob", "gender", "blood_group", "guardian_name", "guardian_phone", "phone", "email"];
+    const sample = ["student", "Ravi", "Kumar", "NXT-2025-002", "5th", "A", "12", "2014-05-20", "Male", "O+", "Suresh Kumar", "9876543210", "", "ravi@example.com"];
     const csv = headers.join(",") + "\n" + sample.join(",") + "\n";
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
@@ -116,6 +117,7 @@ export function ImportClient() {
     ["identifier", "ID"],
     ["member_type", "Type"],
     ["class", "Class"],
+    ["section", "Section"],
     ["dob", "DOB"],
   ];
 
@@ -137,7 +139,7 @@ export function ImportClient() {
           {fileName && <span className="text-sm text-slate-500">{fileName} — {rows.length} rows</span>}
         </div>
         <p className="mt-2 text-xs text-slate-400">
-          Columns are auto-matched. Recognised: name, admission/employee no, class, roll no, dob, gender, blood group, guardian, phone, email, type.
+          Columns are auto-matched. Recognised: name, admission/employee no, class, section, roll no, dob, gender, blood group, guardian, phone, email, type.
         </p>
         {err && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
       </div>

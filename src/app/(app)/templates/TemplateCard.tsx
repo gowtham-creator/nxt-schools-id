@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
-import { Copy, Pencil, Star, Trash2 } from "lucide-react";
+import { Copy, Pencil, Send, Star, Trash2 } from "lucide-react";
 import {
   deleteTemplate,
   duplicateTemplate,
+  pushTemplateToSchools,
   setDefaultTemplate,
   setSchoolTemplate,
 } from "./actions";
@@ -71,13 +73,52 @@ export default function TemplateCard({
   template,
   logo,
   isSchoolDefault = false,
+  schools = [],
 }: {
   template: TemplateCardData;
   logo?: string | null;
   /** True when this template is the school-wide default for its member_type. */
   isSchoolDefault?: boolean;
+  /** Push targets — non-empty only for super_admins. */
+  schools?: { id: string; name: string }[];
 }) {
   const reduce = useReducedMotion();
+  const router = useRouter();
+  const pushRef = useRef<HTMLDetailsElement>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [allSelected, setAllSelected] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function toggleSchool(id: string) {
+    setNote(null);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handlePush() {
+    if (!allSelected && selected.size === 0) {
+      setNote("Select at least one school");
+      return;
+    }
+    startTransition(async () => {
+      const res = await pushTemplateToSchools(
+        template.id,
+        allSelected ? "all" : Array.from(selected),
+      );
+      if (res.error) {
+        setNote(res.error);
+        return;
+      }
+      setNote(`Pushed to ${res.ok} school${res.ok === 1 ? "" : "s"}`);
+      if (pushRef.current) pushRef.current.open = false;
+      router.refresh();
+    });
+  }
 
   const isPortrait = template.height_mm > template.width_mm;
   const elementCount = template.front.elements.length + template.back.elements.length;
@@ -180,6 +221,57 @@ export default function TemplateCard({
               Use for whole school
             </button>
           </form>
+        )}
+
+        {schools.length > 0 && (
+          <div className="mt-3 px-4">
+            <details ref={pushRef} className="group/push">
+              <summary className="btn-secondary btn-sm inline-flex w-full cursor-pointer list-none items-center justify-center gap-1.5 [&::-webkit-details-marker]:hidden">
+                <Send className="h-3.5 w-3.5" />
+                Push to schools
+              </summary>
+              <div className="mt-2 rounded-lg border border-slate-200 bg-white p-1.5 shadow-sm">
+                <div className="max-h-48 overflow-auto">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <input
+                      type="checkbox"
+                      className="accent-teal-600 cursor-pointer"
+                      checked={allSelected}
+                      onChange={() => {
+                        setNote(null);
+                        setAllSelected((v) => !v);
+                      }}
+                    />
+                    All schools
+                  </label>
+                  {schools.map((s) => (
+                    <label
+                      key={s.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-teal-600 cursor-pointer"
+                        checked={allSelected || selected.has(s.id)}
+                        disabled={allSelected}
+                        onChange={() => toggleSchool(s.id)}
+                      />
+                      <span className="truncate">{s.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePush}
+                  disabled={pending}
+                  className="btn-primary btn-sm mt-2 w-full disabled:opacity-60"
+                >
+                  {pending ? "Pushing…" : "Push"}
+                </button>
+              </div>
+            </details>
+            {note && <p className="mt-1.5 text-xs text-slate-500">{note}</p>}
+          </div>
         )}
 
         <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 px-4 py-2.5">
