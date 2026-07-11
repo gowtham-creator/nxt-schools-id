@@ -56,6 +56,29 @@ export async function renderCardPdf(
     await page.evaluate(async () => {
       await document.fonts.ready;
     });
+    // Auto-fit text so long values never overflow their box or overlap the rows
+    // below. The member name is shrunk on a single line; other text shrinks to
+    // fit its box (may wrap). Runs in the real browser, so measurements are exact.
+    await page.evaluate(() => {
+      const MIN = 6; // px floor
+      const fit = (el: Element, singleLine: boolean) => {
+        const box = el as HTMLElement;
+        const inner = box.querySelector<HTMLElement>("[data-fit-inner]");
+        if (!inner) return;
+        if (singleLine) inner.style.whiteSpace = "nowrap";
+        let size = parseFloat(getComputedStyle(inner).fontSize) || 12;
+        const overflowing = () =>
+          box.scrollWidth > box.clientWidth + 0.5 ||
+          box.scrollHeight > box.clientHeight + 0.5;
+        let guard = 80;
+        while (guard-- > 0 && overflowing() && size > MIN) {
+          size -= 0.5;
+          inner.style.fontSize = `${size}px`;
+        }
+      };
+      document.querySelectorAll('[data-fit="name"]').forEach((el) => fit(el, true));
+      document.querySelectorAll('[data-fit="text"]').forEach((el) => fit(el, false));
+    });
     const buf = await page.pdf({
       width: `${width_mm}mm`,
       height: `${height_mm}mm`,

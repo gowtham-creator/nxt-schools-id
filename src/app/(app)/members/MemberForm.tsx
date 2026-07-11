@@ -7,11 +7,14 @@ import { PhotoField } from "./PhotoField";
 
 /** Serializable academic-year option for the Batch dropdown. */
 export type AcademicYearOption = { id: string; name: string; is_current?: boolean };
+/** Serializable branch option for the Branch dropdown. */
+export type BranchOption = { id: string; name: string };
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
   classes: ClassRow[];
   academicYears?: AcademicYearOption[];
+  branches?: BranchOption[];
   member?: Partial<Member>;
   submitLabel?: string;
 };
@@ -42,6 +45,7 @@ export function MemberForm({
   action,
   classes,
   academicYears = [],
+  branches = [],
   member,
   submitLabel = "Save member",
 }: Props) {
@@ -100,6 +104,18 @@ export function MemberForm({
 
       {/* Type-specific */}
       <div className="grid grid-cols-3 gap-4">
+        {branches.length > 0 && (
+          <Field label="Branch / Campus" htmlFor="branch_id">
+            <select id="branch_id" name="branch_id" defaultValue={member?.branch_id ?? ""} className={inputCls}>
+              <option value="">— Select branch —</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         {type === "student" ? (
           <>
             <Field label="Class / Grade" htmlFor="class_id">

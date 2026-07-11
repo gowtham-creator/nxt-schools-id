@@ -12,12 +12,17 @@ export default async function NewMemberPage({
 }) {
   const sp = await searchParams;
   const supabase = await createClient();
-  const [{ data: classes }, { data: years }] = await Promise.all([
+  const [{ data: classes }, { data: years }, { data: branches }] = await Promise.all([
     supabase.from("classes").select("*").order("name"),
     supabase
       .from("academic_years")
       .select("id, name, is_current")
       .order("name", { ascending: false }),
+    supabase
+      .from("branches")
+      .select("id, name")
+      .eq("status", "active")
+      .order("name"),
   ]);
 
   return (
@@ -35,6 +40,7 @@ export default async function NewMemberPage({
           action={createMember}
           classes={(classes ?? []) as ClassRow[]}
           academicYears={years ?? []}
+          branches={branches ?? []}
           submitLabel="Add member"
         />
       </div>

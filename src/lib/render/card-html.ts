@@ -107,7 +107,11 @@ function elementHtml(
       if (el.letterSpacing != null)
         inner.push(`letter-spacing:${mmToPx(el.letterSpacing, scale)}px`);
       if (el.uppercase) inner.push("text-transform:uppercase");
-      return `<div ${idAttr} style="${attr(outer.join(";"))}"><div style="${attr(
+      // data-fit lets the print pipeline shrink text to fit its box. The member
+      // name is fit on a single line so long names never overflow into the rows
+      // below; all other text is fit within the box (may wrap).
+      const fitKind = el.type === "field" && el.field === "full_name" ? "name" : "text";
+      return `<div ${idAttr} data-fit="${fitKind}" style="${attr(outer.join(";"))}"><div data-fit-inner style="${attr(
         inner.join(";"),
       )}">${esc(value)}</div></div>`;
     }
@@ -118,7 +122,9 @@ function elementHtml(
         (el.src ? data[el.src] ?? (ASSET_RE.test(el.src) ? el.src : undefined) : undefined);
       const d = [...baseDecls(el, scale, z), "overflow:hidden"];
       if (el.radius) d.push(`border-radius:${mmToPx(el.radius, scale)}px`);
-      if (!src) d.push("background-color:#e2e8f0");
+      // A missing photo keeps a subtle placeholder; a missing school logo renders
+      // transparent (no ugly grey box on schools that haven't uploaded a logo yet).
+      if (!src && el.src !== "logo") d.push("background-color:#e2e8f0");
       const img = src
         ? `<img src="${esc(src)}" alt="" style="width:100%;height:100%;object-fit:${
             el.fit ?? "cover"

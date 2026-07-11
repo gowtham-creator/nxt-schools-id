@@ -17,14 +17,16 @@ export default async function EditMemberPage({
   const sp = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: member }, { data: classes }, { data: years }] = await Promise.all([
-    supabase.from("members").select("*").eq("id", id).maybeSingle(),
-    supabase.from("classes").select("*").order("name"),
-    supabase
-      .from("academic_years")
-      .select("id, name, is_current")
-      .order("name", { ascending: false }),
-  ]);
+  const [{ data: member }, { data: classes }, { data: years }, { data: branches }] =
+    await Promise.all([
+      supabase.from("members").select("*").eq("id", id).maybeSingle(),
+      supabase.from("classes").select("*").order("name"),
+      supabase
+        .from("academic_years")
+        .select("id, name, is_current")
+        .order("name", { ascending: false }),
+      supabase.from("branches").select("id, name").eq("status", "active").order("name"),
+    ]);
 
   if (!member) notFound();
 
@@ -39,6 +41,7 @@ export default async function EditMemberPage({
           action={updateMember.bind(null, id)}
           classes={(classes ?? []) as ClassRow[]}
           academicYears={years ?? []}
+          branches={branches ?? []}
           member={member as Member}
           submitLabel="Update member"
         />
