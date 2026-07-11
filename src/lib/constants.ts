@@ -52,3 +52,47 @@ export const GENDERS = ["Male", "Female", "Other"] as const;
 export const BLOOD_GROUPS = [
   "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-",
 ] as const;
+
+/**
+ * The standard school grade ladder (India), in display order. Seeded as
+ * `classes` for every school so the Class dropdown is populated on day one.
+ */
+export const STANDARD_GRADES = [
+  "Nursery",
+  "LKG",
+  "UKG",
+  "1st",
+  "2nd",
+  "3rd",
+  "4th",
+  "5th",
+  "6th",
+  "7th",
+  "8th",
+  "9th",
+  "10th",
+  "11th",
+  "12th",
+] as const;
+
+const GRADE_RANK = new Map<string, number>(
+  STANDARD_GRADES.map((g, i) => [g.toLowerCase(), i]),
+);
+
+/** Rank a class name against the standard ladder; unknowns sort last. */
+export function gradeRank(name: string): number {
+  return GRADE_RANK.get(name.trim().toLowerCase()) ?? 999;
+}
+
+/** Order classes by grade (Nursery → 12th), then name, then section. */
+export function sortClasses<T extends { name: string; section?: string | null }>(
+  rows: T[],
+): T[] {
+  return [...rows].sort((a, b) => {
+    const ra = gradeRank(a.name);
+    const rb = gradeRank(b.name);
+    if (ra !== rb) return ra - rb;
+    if (a.name !== b.name) return a.name.localeCompare(b.name);
+    return (a.section ?? "").localeCompare(b.section ?? "");
+  });
+}

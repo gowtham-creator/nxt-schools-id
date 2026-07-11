@@ -13,6 +13,7 @@ export const memberSchema = z.object({
   first_name: z.string().trim().min(1, "First name is required").max(80),
   last_name: z.preprocess(emptyToNull, z.string().trim().max(80).nullable()),
   class_id: z.preprocess(emptyToNull, z.string().uuid().nullable()),
+  academic_year_id: z.preprocess(emptyToNull, z.string().uuid().nullable()),
   roll_no: z.preprocess(emptyToNull, z.string().trim().max(40).nullable()),
   designation: z.preprocess(emptyToNull, z.string().trim().max(80).nullable()),
   department: z.preprocess(emptyToNull, z.string().trim().max(80).nullable()),

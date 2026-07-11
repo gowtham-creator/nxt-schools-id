@@ -17,9 +17,13 @@ export default async function EditMemberPage({
   const sp = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: member }, { data: classes }] = await Promise.all([
+  const [{ data: member }, { data: classes }, { data: years }] = await Promise.all([
     supabase.from("members").select("*").eq("id", id).maybeSingle(),
     supabase.from("classes").select("*").order("name"),
+    supabase
+      .from("academic_years")
+      .select("id, name, is_current")
+      .order("name", { ascending: false }),
   ]);
 
   if (!member) notFound();
@@ -34,6 +38,7 @@ export default async function EditMemberPage({
         <MemberForm
           action={updateMember.bind(null, id)}
           classes={(classes ?? []) as ClassRow[]}
+          academicYears={years ?? []}
           member={member as Member}
           submitLabel="Update member"
         />

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { STANDARD_GRADES } from "@/lib/constants";
 import type { MemberType } from "@/lib/types";
 
 /**
@@ -220,6 +221,11 @@ export async function onboardSchool(fd: FormData) {
 
   // e) Copy the six standard templates + set student/staff defaults.
   await provisionTemplates(admin, school.id);
+
+  // e2) Seed the standard grade ladder so the Class dropdown is populated.
+  await admin
+    .from("classes")
+    .insert(STANDARD_GRADES.map((name) => ({ school_id: school.id, name })));
 
   // f) Audit trail.
   await logAudit(admin, {

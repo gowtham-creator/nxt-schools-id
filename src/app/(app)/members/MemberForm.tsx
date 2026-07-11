@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { BLOOD_GROUPS, GENDERS } from "@/lib/constants";
+import { BLOOD_GROUPS, GENDERS, sortClasses } from "@/lib/constants";
 import type { ClassRow, Member } from "@/lib/types";
 import { PhotoField } from "./PhotoField";
+
+/** Serializable academic-year option for the Batch dropdown. */
+export type AcademicYearOption = { id: string; name: string; is_current?: boolean };
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
   classes: ClassRow[];
+  academicYears?: AcademicYearOption[];
   member?: Partial<Member>;
   submitLabel?: string;
 };
@@ -34,8 +38,21 @@ function Field({
   );
 }
 
-export function MemberForm({ action, classes, member, submitLabel = "Save member" }: Props) {
+export function MemberForm({
+  action,
+  classes,
+  academicYears = [],
+  member,
+  submitLabel = "Save member",
+}: Props) {
   const [type, setType] = useState<"student" | "staff">(member?.member_type ?? "student");
+
+  // Class dropdown ordered by grade (Nursery → 12th), not alphabetically.
+  const orderedClasses = sortClasses(classes);
+
+  // Batch defaults to the member's saved year, else the school's current year.
+  const currentYear = academicYears.find((y) => y.is_current);
+  const defaultYearId = member?.academic_year_id ?? currentYear?.id ?? "";
 
   return (
     <form action={action} className="max-w-3xl space-y-6">
@@ -85,10 +102,10 @@ export function MemberForm({ action, classes, member, submitLabel = "Save member
       <div className="grid grid-cols-3 gap-4">
         {type === "student" ? (
           <>
-            <Field label="Class" htmlFor="class_id">
+            <Field label="Class / Grade" htmlFor="class_id">
               <select id="class_id" name="class_id" defaultValue={member?.class_id ?? ""} className={inputCls}>
-                <option value="">— none —</option>
-                {classes.map((c) => (
+                <option value="">— Select grade —</option>
+                {orderedClasses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                     {c.section ? ` - ${c.section}` : ""}
@@ -98,6 +115,22 @@ export function MemberForm({ action, classes, member, submitLabel = "Save member
             </Field>
             <Field label="Roll No" htmlFor="roll_no">
               <input id="roll_no" name="roll_no" defaultValue={member?.roll_no ?? ""} className={inputCls} />
+            </Field>
+            <Field label="Batch (Academic year)" htmlFor="academic_year_id">
+              <select
+                id="academic_year_id"
+                name="academic_year_id"
+                defaultValue={defaultYearId}
+                className={inputCls}
+              >
+                <option value="">— Select batch —</option>
+                {academicYears.map((y) => (
+                  <option key={y.id} value={y.id}>
+                    {y.name}
+                    {y.is_current ? " (current)" : ""}
+                  </option>
+                ))}
+              </select>
             </Field>
           </>
         ) : (
