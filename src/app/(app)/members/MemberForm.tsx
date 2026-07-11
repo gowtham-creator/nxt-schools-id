@@ -139,7 +139,7 @@ export function MemberForm({
                 ))}
               </select>
             </Field>
-            <Field label="Section" htmlFor="class_section">
+            <Field label="Section (optional)" htmlFor="class_section">
               <select id="class_section" name="class_section" defaultValue={defaultSection} className={inputCls}>
                 <option value="">— none —</option>
                 {SECTIONS.map((s) => (
