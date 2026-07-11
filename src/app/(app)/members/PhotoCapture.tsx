@@ -96,6 +96,9 @@ export function PhotoCapture({
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  // Default to the BACK camera ("environment") — for photographing a person in
+  // front of you. Desktops without a back camera fall back automatically.
+  const [facing, setFacing] = useState<"environment" | "user">("environment");
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -115,17 +118,27 @@ export function PhotoCapture({
     setCroppedArea(null);
   }, []);
 
+  /** Open a camera stream on the given side. `ideal` is a soft constraint so a
+   *  device with only one camera still opens instead of failing. */
+  const getStream = useCallback((mode: "environment" | "user") => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Webcam capture is not supported in this browser.");
+    }
+    return navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: mode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
+  }, []);
+
   const startCamera = useCallback(async () => {
     setError("");
     setBusy(true);
     try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("Webcam capture is not supported in this browser.");
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
+      const stream = await getStream(facing);
       streamRef.current = stream;
       setStage("camera");
     } catch (err) {
@@ -133,7 +146,26 @@ export function PhotoCapture({
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [facing, getStream]);
+
+  /** Flip between the back and front camera without leaving the camera view. */
+  const switchCamera = useCallback(async () => {
+    const next = facing === "environment" ? "user" : "environment";
+    setError("");
+    try {
+      const stream = await getStream(next);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = stream;
+      setFacing(next);
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        await video.play().catch(() => undefined);
+      }
+    } catch (err) {
+      setError(describeError(err, "Could not switch camera."));
+    }
+  }, [facing, getStream]);
 
   // Attach the stream once the <video> is mounted in the camera stage.
   useEffect(() => {
@@ -258,11 +290,14 @@ export function PhotoCapture({
                 className="h-auto w-full"
               />
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button type="button" onClick={capture} className="btn-primary">
                 Capture
               </button>
-              <button type="button" onClick={reset} className="btn-secondary">
+              <button type="button" onClick={switchCamera} className="btn-secondary">
+                Flip camera ({facing === "environment" ? "back" : "front"} now)
+              </button>
+              <button type="button" onClick={reset} className="btn-ghost">
                 Cancel
               </button>
             </div>
