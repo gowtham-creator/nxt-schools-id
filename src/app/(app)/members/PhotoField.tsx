@@ -10,26 +10,22 @@ type Props = {
   memberId?: string | null;
 };
 
-/** Client-side upload guard: 2 MB max, JPG/PNG only (mirrors the server action). */
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
-const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
-
 /**
  * Circular photo control for MemberForm. Holds the current photo URL in a
- * hidden <input name="photo_url"> (so the form still submits photo_url), and
- * lets the user upload a file or capture from the webcam. When `memberId` is
- * set (edit mode) uploads persist immediately and Remove deletes server-side.
+ * hidden <input name="photo_url"> (so the form still submits photo_url). Both
+ * "Upload file" and "Use webcam" go through PhotoCapture's crop step, so every
+ * photo is adjusted to passport size (35×45) before it is uploaded — no raw,
+ * un-cropped uploads. In edit mode the upload persists immediately.
  */
 export function PhotoField({ initialUrl, memberId }: Props) {
   const [photoUrl, setPhotoUrl] = useState<string>(initialUrl ?? "");
-  const [showCamera, setShowCamera] = useState(false);
   const [error, setError] = useState<string>("");
   const [pending, startTransition] = useTransition();
 
-  function upload(file: Blob, filename: string) {
+  function upload(blob: Blob, filename: string) {
     setError("");
     const fd = new FormData();
-    fd.append("photo", file, filename);
+    fd.append("photo", blob, filename);
     if (memberId) fd.append("member_id", memberId);
     startTransition(async () => {
       try {
@@ -39,7 +35,6 @@ export function PhotoField({ initialUrl, memberId }: Props) {
           return;
         }
         setPhotoUrl(url);
-        setShowCamera(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Upload failed");
       }
@@ -48,10 +43,7 @@ export function PhotoField({ initialUrl, memberId }: Props) {
 
   function remove() {
     setError("");
-    // Clear the field immediately for a responsive feel; delete server-side too
-    // when we know the member (edit mode).
-    setPhotoUrl("");
-    setShowCamera(false);
+    setPhotoUrl(""); // instant feedback; server delete happens in edit mode
     if (!memberId) return;
     startTransition(async () => {
       try {
@@ -63,76 +55,43 @@ export function PhotoField({ initialUrl, memberId }: Props) {
     });
   }
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file later
-    if (!file) return;
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError("Please choose a JPG or PNG image");
-      return;
-    }
-    if (file.size > MAX_PHOTO_BYTES) {
-      setError("Photo must be under 2 MB");
-      return;
-    }
-    upload(file, file.name);
-  }
-
   return (
     <div className="shrink-0 text-center">
       <input type="hidden" name="photo_url" value={photoUrl} />
 
-      <div className="mx-auto flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-50">
+      <div className="relative mx-auto h-28 w-28 overflow-hidden rounded-full border border-slate-200 bg-slate-50">
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photoUrl} alt="photo" className="h-full w-full object-cover" />
         ) : (
-          <span className="px-2 text-center text-xs text-slate-400">No photo</span>
+          <span className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-slate-400">
+            No photo
+          </span>
+        )}
+        {pending && (
+          <span className="absolute inset-0 flex items-center justify-center bg-white/70 text-xs font-medium text-slate-600">
+            Working…
+          </span>
         )}
       </div>
 
-      <div className="mt-3 flex flex-col items-center gap-1.5">
-        <label className={`btn-secondary btn-sm ${pending ? "opacity-50" : ""}`}>
-          {pending ? "Working…" : photoUrl ? "Change photo" : "Upload photo"}
-          <input
-            type="file"
-            accept="image/jpeg,image/png"
-            className="hidden"
-            onChange={onFile}
-            disabled={pending}
-          />
-        </label>
-        <div className="flex items-center gap-2">
+      <div className="mt-3 flex flex-col items-center gap-2">
+        {/* Both upload and camera route through the crop step. */}
+        <PhotoCapture uploadSelf={false} onCaptured={(blob) => upload(blob, "photo.jpg")} />
+        {photoUrl && (
           <button
             type="button"
-            onClick={() => setShowCamera((v) => !v)}
+            onClick={remove}
             disabled={pending}
-            className="btn-ghost btn-sm"
+            className="cursor-pointer text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
           >
-            {showCamera ? "Close camera" : "Use camera"}
+            Remove photo
           </button>
-          {photoUrl && (
-            <button
-              type="button"
-              onClick={remove}
-              disabled={pending}
-              className="btn-sm cursor-pointer text-sm font-medium text-red-600 hover:text-red-700"
-            >
-              Remove
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-slate-400">Passport size (35×45), JPG/PNG, max 2 MB.</p>
+        )}
+        <p className="max-w-[13rem] text-xs text-slate-400">
+          Upload or use the camera, then drag &amp; zoom to crop to passport size (35×45).
+        </p>
       </div>
-
-      {showCamera && (
-        <div className="mt-3">
-          <PhotoCapture
-            uploadSelf={false}
-            onCaptured={(blob) => upload(blob, "capture.jpg")}
-          />
-        </div>
-      )}
 
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>

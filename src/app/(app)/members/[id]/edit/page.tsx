@@ -30,9 +30,18 @@ export default async function EditMemberPage({
 
   if (!member) notFound();
 
+  const cardUrl = (member as Member).card_pdf_url;
+
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">Edit member</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold text-slate-900">Edit member</h1>
+        {cardUrl && (
+          <a href={cardUrl} target="_blank" rel="noreferrer" className="btn-secondary">
+            Download ID card
+          </a>
+        )}
+      </div>
       {sp.error && (
         <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{sp.error}</p>
       )}
