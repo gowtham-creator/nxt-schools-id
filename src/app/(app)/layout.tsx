@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { ROLE_LABELS } from "@/lib/constants";
 import { getProfile } from "@/lib/auth";
-import { trialLimitFor, getTrialStatus } from "@/lib/trial";
+import { getTrialStatus } from "@/lib/trial";
 import type { AppRole } from "@/lib/types";
 import NavLink from "./NavLink";
 
@@ -29,12 +29,12 @@ export default async function AppLayout({
   const { user, profile } = await getProfile();
   const role = profile.role;
 
-  // Usage-based trial lock: a trial school whose active-time budget is spent is
-  // sent to the expired screen. Only trial schools incur a lookup; super admins
-  // are never gated.
-  if (role !== "super_admin" && trialLimitFor(profile.school_id) != null) {
-    const status = await getTrialStatus(profile.school_id!);
-    if (status?.expired) redirect("/trial-expired");
+  // Access lock: a school whose super-admin-assigned active-time budget is spent
+  // is sent to the restricted screen (which then signs them out). Super admins
+  // are never gated; schools with no limit return null (no gate).
+  if (role !== "super_admin" && profile.school_id) {
+    const trial = await getTrialStatus(profile.school_id);
+    if (trial?.expired) redirect("/restricted");
   }
 
   return (

@@ -35,6 +35,7 @@ const ACTION_META: Record<string, { label: string; className: string }> = {
   "school.onboarded": { label: "School onboarded", className: "bg-violet-50 text-violet-700" },
   "school.suspended": { label: "School suspended", className: "bg-rose-50 text-rose-700" },
   "school.reactivated": { label: "School reactivated", className: "bg-emerald-50 text-emerald-700" },
+  "school.trial_updated": { label: "Access limit updated", className: "bg-amber-50 text-amber-700" },
   "school.logo_updated": { label: "Logo updated", className: "bg-teal-50 text-teal-700" },
 };
 

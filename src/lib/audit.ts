@@ -22,7 +22,8 @@ export type AuditAction =
   | "school.onboarded"
   | "school.suspended"
   | "school.reactivated"
-  | "school.logo_updated";
+  | "school.logo_updated"
+  | "school.trial_updated";
 
 interface LogAuditArgs {
   schoolId: string | null;

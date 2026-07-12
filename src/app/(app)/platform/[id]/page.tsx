@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { Building2 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTrialConfig } from "@/lib/trial";
 import type { PipelineStatus } from "@/lib/types";
 import AutoRefresh from "../../AutoRefresh";
+import TrialControl from "./TrialControl";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +60,7 @@ const ACTION_LABELS: Record<string, string> = {
   "school.suspended": "School suspended",
   "school.reactivated": "School reactivated",
   "school.logo_updated": "Logo updated",
+  "school.trial_updated": "Access limit updated",
 };
 
 function actionLabel(action: string): string {
@@ -165,6 +168,8 @@ export default async function SchoolDetailPage({
   const school = (schoolRes.data ?? null) as SchoolDetail | null;
   if (!school) notFound();
 
+  const trialConfig = await getTrialConfig(id);
+
   const audit = (auditRes.data ?? []) as unknown as AuditRow[];
   const templatesReady = Boolean(
     school.student_template_id && school.staff_template_id,
@@ -252,6 +257,11 @@ export default async function SchoolDetailPage({
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Super-admin access control (time-limited access / paywall) */}
+      <div className="mt-5">
+        <TrialControl schoolId={school.id} config={trialConfig} />
       </div>
 
       {/* Details + activity */}

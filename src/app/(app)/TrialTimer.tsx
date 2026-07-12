@@ -19,7 +19,7 @@ function fmt(total: number): string {
  * ACTIVE time (HH:MM:SS), counts down every second while the tab is visible,
  * and every 20s sends a heartbeat that persists the elapsed active time on the
  * server and re-syncs the display to the server truth. When it runs out, the
- * school is sent to /trial-expired.
+ * school is sent to /restricted.
  */
 export default function TrialTimer({
   initialRemaining,
@@ -50,7 +50,7 @@ export default function TrialTimer({
         const status = await tickTrial();
         if (!alive || !status) return;
         setRemaining(status.remaining);
-        if (status.expired) router.replace("/trial-expired");
+        if (status.expired) router.replace("/restricted");
       } catch {
         /* transient — the next heartbeat retries */
       }
@@ -67,7 +67,7 @@ export default function TrialTimer({
     if (remaining > 0) return;
     let alive = true;
     tickTrial().then((s) => {
-      if (alive && (!s || s.expired)) router.replace("/trial-expired");
+      if (alive && (!s || s.expired)) router.replace("/restricted");
     });
     return () => {
       alive = false;
