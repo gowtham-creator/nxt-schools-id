@@ -7,6 +7,7 @@ import { getTrialConfig } from "@/lib/trial";
 import type { PipelineStatus } from "@/lib/types";
 import AutoRefresh from "../../AutoRefresh";
 import TrialControl from "./TrialControl";
+import SchoolAccessPanel, { type LoginRow } from "./SchoolAccessPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -114,6 +115,8 @@ export default async function SchoolDetailPage({
     branchesRes,
     classesRes,
     auditRes,
+    schoolUsersRes,
+    authUsersRes,
   ] = await Promise.all([
     admin
       .from("schools")
@@ -163,12 +166,31 @@ export default async function SchoolDetailPage({
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(20),
+    admin.from("app_users").select("id, role").eq("school_id", id),
+    admin.auth.admin.listUsers({ perPage: 1000 }),
   ]);
 
   const school = (schoolRes.data ?? null) as SchoolDetail | null;
   if (!school) notFound();
 
   const trialConfig = await getTrialConfig(id);
+
+  // Logins for this school (email + role + last sign-in) for the access panel.
+  const schoolUsers = (schoolUsersRes.data ?? []) as { id: string; role: string }[];
+  const authById = new Map(
+    (authUsersRes.data?.users ?? []).map((u) => [u.id, u]),
+  );
+  const logins: LoginRow[] = schoolUsers
+    .map((su) => {
+      const au = authById.get(su.id);
+      return {
+        id: su.id,
+        email: au?.email ?? "—",
+        role: su.role,
+        lastLogin: au?.last_sign_in_at ? relativeTime(au.last_sign_in_at) : "never",
+      };
+    })
+    .sort((a, b) => (a.role === "admin" ? -1 : 1) - (b.role === "admin" ? -1 : 1));
 
   const audit = (auditRes.data ?? []) as unknown as AuditRow[];
   const templatesReady = Boolean(
@@ -262,6 +284,20 @@ export default async function SchoolDetailPage({
       {/* Super-admin access control (time-limited access / paywall) */}
       <div className="mt-5">
         <TrialControl schoolId={school.id} config={trialConfig} />
+        {trialConfig?.enabled && (
+          <p className="mt-2 text-xs text-slate-500">
+            {trialConfig.lastActive
+              ? `Timer last advanced ${relativeTime(
+                  trialConfig.lastActive,
+                )} — updates live as they use the app.`
+              : "Not started yet — the timer begins when they first use the app."}
+          </p>
+        )}
+      </div>
+
+      {/* Access & credentials: log in as this school, logins, reset password */}
+      <div className="mt-5">
+        <SchoolAccessPanel schoolId={school.id} users={logins} />
       </div>
 
       {/* Details + activity */}

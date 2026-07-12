@@ -23,6 +23,7 @@ interface TrialRow {
   seconds_limit: number;
   seconds_used: number;
   enabled: boolean;
+  last_tick: string | null;
 }
 
 export interface TrialStatus {
@@ -34,6 +35,8 @@ export interface TrialStatus {
 /** Admin view of a school's limit (may be disabled). */
 export interface TrialConfig extends TrialStatus {
   enabled: boolean;
+  /** ISO time of the last active-usage heartbeat (drives "active now / last active"). */
+  lastActive: string | null;
 }
 
 async function readRow(schoolId: string): Promise<TrialRow | null> {
@@ -41,7 +44,7 @@ async function readRow(schoolId: string): Promise<TrialRow | null> {
     const admin = createAdminClient();
     const { data } = await admin
       .from("trial_usage")
-      .select("seconds_limit, seconds_used, enabled")
+      .select("seconds_limit, seconds_used, enabled, last_tick")
       .eq("school_id", schoolId)
       .maybeSingle<TrialRow>();
     return data ?? null;
@@ -73,7 +76,11 @@ export const getTrialStatus = cache(
 export async function getTrialConfig(schoolId: string): Promise<TrialConfig | null> {
   const row = await readRow(schoolId);
   if (!row) return null;
-  return { ...statusOf(row.seconds_limit, row.seconds_used), enabled: row.enabled };
+  return {
+    ...statusOf(row.seconds_limit, row.seconds_used),
+    enabled: row.enabled,
+    lastActive: row.last_tick,
+  };
 }
 
 /**
