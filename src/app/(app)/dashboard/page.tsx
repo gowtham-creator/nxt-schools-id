@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardAnalytics } from "@/lib/analytics";
+import { getTrialStatus } from "@/lib/trial";
 import type { AppRole, PipelineStatus } from "@/lib/types";
 import DashboardView, { type DashboardMetrics, type SetupFlags } from "./DashboardView";
 
@@ -113,12 +114,17 @@ export default async function DashboardPage() {
   const needsLogo =
     !callerLogoUrl && (role === "admin" || role === "super_admin");
 
+  // Usage-based trial (only for trial schools — null otherwise). The (app)
+  // layout already redirects expired trial schools away from here.
+  const trial = schoolId ? await getTrialStatus(schoolId) : null;
+
   return (
     <DashboardView
       metrics={metrics}
       analytics={analytics}
       setup={setup}
       needsLogo={needsLogo}
+      trial={trial}
     />
   );
 }

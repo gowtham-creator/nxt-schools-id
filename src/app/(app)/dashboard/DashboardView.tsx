@@ -20,11 +20,13 @@ import {
 import Link from "next/link";
 import { ScanLine } from "lucide-react";
 import type { AnalyticsData } from "@/lib/analytics";
+import type { TrialStatus } from "@/lib/trial";
 import StatusDonut from "./charts/StatusDonut";
 import GeneratedAreaChart from "./charts/GeneratedAreaChart";
 import BranchBarChart from "./charts/BranchBarChart";
 import ClassBarChart from "./charts/ClassBarChart";
 import AutoRefresh from "../AutoRefresh";
+import TrialTimer from "../TrialTimer";
 
 /** Serializable metrics computed by the server component. */
 export interface DashboardMetrics {
@@ -83,11 +85,13 @@ export default function DashboardView({
   analytics,
   setup,
   needsLogo,
+  trial,
 }: {
   metrics: DashboardMetrics;
   analytics: AnalyticsData;
   setup: SetupFlags;
   needsLogo: boolean;
+  trial?: TrialStatus | null;
 }) {
   const reduce = useReducedMotion();
 
@@ -184,6 +188,11 @@ export default function DashboardView({
   return (
     <motion.div variants={container} initial="hidden" animate="show">
       <AutoRefresh seconds={15} />
+
+      {/* Usage-based trial countdown (only for trial schools). */}
+      {trial && !trial.expired && (
+        <TrialTimer initialRemaining={trial.remaining} limit={trial.limit} />
+      )}
 
       {/* Upload-your-logo prompt — admins/super-admins whose school has no logo yet */}
       {needsLogo && (
