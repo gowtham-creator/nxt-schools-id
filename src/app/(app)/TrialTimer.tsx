@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock } from "lucide-react";
+import { Clock, Info, ChevronDown } from "lucide-react";
 import { tickTrial } from "./trial-actions";
 
 /** Seconds → HH:MM:SS. */
@@ -30,6 +30,7 @@ export default function TrialTimer({
 }) {
   const router = useRouter();
   const [remaining, setRemaining] = useState(initialRemaining);
+  const [showInfo, setShowInfo] = useState(false);
 
   // Smooth per-second countdown (predicted; corrected by each heartbeat).
   useEffect(() => {
@@ -79,44 +80,79 @@ export default function TrialTimer({
 
   return (
     <div
-      className={`card mb-6 flex flex-wrap items-center gap-4 border p-4 ${
+      className={`card mb-6 border p-4 ${
         low ? "border-rose-200 bg-rose-50" : "border-teal-200 bg-teal-50/70"
       }`}
     >
-      <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-          low ? "bg-rose-100 text-rose-700" : "bg-teal-100 text-teal-700"
-        }`}
-      >
-        <Clock className="h-5 w-5" />
-      </div>
-      <div>
+      <div className="flex flex-wrap items-center gap-4">
         <div
-          className={`text-xs font-semibold uppercase tracking-wide ${
-            low ? "text-rose-600" : "text-teal-700"
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+            low ? "bg-rose-100 text-rose-700" : "bg-teal-100 text-teal-700"
           }`}
         >
-          Trial time left
+          <Clock className="h-5 w-5" />
         </div>
-        <div
-          className={`font-mono text-2xl font-bold tabular-nums ${
-            low ? "text-rose-700" : "text-teal-800"
-          }`}
-        >
-          {fmt(remaining)}
-        </div>
-      </div>
-      <div className="ml-auto w-40 max-w-[45%]">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-white/70">
+        <div>
           <div
-            className={`h-full rounded-full ${low ? "bg-rose-500" : "bg-teal-600"}`}
-            style={{ width: `${pct}%` }}
-          />
+            className={`text-xs font-semibold uppercase tracking-wide ${
+              low ? "text-rose-600" : "text-teal-700"
+            }`}
+          >
+            Trial time left
+          </div>
+          <div
+            className={`font-mono text-2xl font-bold tabular-nums ${
+              low ? "text-rose-700" : "text-teal-800"
+            }`}
+          >
+            {fmt(remaining)}
+          </div>
         </div>
-        <div className="mt-1 text-right text-[11px] text-slate-500">
-          of {fmt(limit)} trial
+        <div className="ml-auto flex items-center gap-4">
+          <div className="w-32 sm:w-40">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/70">
+              <div
+                className={`h-full rounded-full ${low ? "bg-rose-500" : "bg-teal-600"}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <div className="mt-1 text-right text-[11px] text-slate-500">
+              of {fmt(limit)} trial
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowInfo((v) => !v)}
+            aria-expanded={showInfo}
+            className={`inline-flex shrink-0 items-center gap-1 text-sm font-medium ${
+              low ? "text-rose-700 hover:text-rose-800" : "text-teal-700 hover:text-teal-800"
+            }`}
+          >
+            <Info className="h-4 w-4" />
+            More info
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform ${showInfo ? "rotate-180" : ""}`}
+            />
+          </button>
         </div>
       </div>
+
+      {showInfo && (
+        <div className="mt-3 border-t border-white/70 pt-3 text-sm text-slate-700">
+          <p className="font-semibold text-slate-900">Payment reminder</p>
+          <p className="mt-1 text-slate-600">
+            You&rsquo;re on a trial of NXT Schools ID Card Suite. To keep using the software
+            after your trial time ends, please clear your <span className="font-semibold">1st
+            installment</span>. Contact NXT Schools to complete the payment.
+          </p>
+          <a
+            href="mailto:hello@nxtschools.com?subject=1st%20installment%20payment%20%E2%80%94%20NXT%20Schools%20ID%20Card%20Suite"
+            className="btn-primary btn-sm mt-3"
+          >
+            Clear 1st installment
+          </a>
+        </div>
+      )}
     </div>
   );
 }
