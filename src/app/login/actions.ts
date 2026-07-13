@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getTrialStatus } from "@/lib/trial";
+import { logAudit } from "@/lib/audit";
 
 const RESTRICTED_MSG =
   "Access restricted: your time-limited access has ended. Please contact NXT Schools.";
@@ -36,6 +38,15 @@ export async function login(formData: FormData) {
         redirect(`/login?error=${encodeURIComponent(RESTRICTED_MSG)}`);
       }
     }
+    // Record the sign-in so it shows up in the live audit + login-activity views.
+    await logAudit(createAdminClient(), {
+      schoolId: (prof?.school_id as string | null) ?? null,
+      actorId: user.id,
+      action: "user.login",
+      targetType: "user",
+      targetId: user.id,
+      meta: { email, role: prof?.role ?? "operator" },
+    });
   }
 
   revalidatePath("/", "layout");
