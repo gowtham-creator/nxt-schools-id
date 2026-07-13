@@ -13,14 +13,35 @@ export const dynamic = "force-dynamic";
 // full-school batch needs the platform maximum, not the 60s default.
 export const maxDuration = 300;
 
-/** Pipeline status tabs. `value: null` means "All" (no pipeline_status filter). */
-const PIPELINE_TABS: { label: string; value: PipelineStatus | null }[] = [
-  { label: "All", value: null },
-  { label: "Not Generated", value: "not_generated" },
-  { label: "Generated", value: "generated" },
-  { label: "Print Approval Pending", value: "print_approval_pending" },
-  { label: "Sent For Printing", value: "sent_for_printing" },
-  { label: "Printed", value: "printed" },
+/** Pipeline status tabs. `value: null` means "All" (no pipeline_status filter).
+ *  `help` is the plain-language meaning shown as a tooltip + in the guide. */
+const PIPELINE_TABS: { label: string; value: PipelineStatus | null; help: string }[] = [
+  { label: "All", value: null, help: "Every student and staff record." },
+  {
+    label: "Not Generated",
+    value: "not_generated",
+    help: "No ID card has been made yet. Click Generate to create the card.",
+  },
+  {
+    label: "Generated",
+    value: "generated",
+    help: "The ID card is created as a digital file (PDF). It's ready to review and download, but not printed on plastic yet.",
+  },
+  {
+    label: "Print Approval Pending",
+    value: "print_approval_pending",
+    help: "The card is waiting for someone at the school to approve it before it goes to the printer.",
+  },
+  {
+    label: "Sent For Printing",
+    value: "sent_for_printing",
+    help: "The approved card has been handed off to the card printer / vendor to be printed on plastic.",
+  },
+  {
+    label: "Printed",
+    value: "printed",
+    help: "The physical plastic ID card is printed and ready to hand to the student or staff member.",
+  },
 ];
 
 const PIPELINE_VALUES: PipelineStatus[] = [
@@ -146,14 +167,15 @@ export default async function MembersPage({
         </p>
       )}
 
-      {/* Pipeline status tabs */}
-      <div className="mt-5 flex flex-wrap gap-2">
+      {/* Pipeline status tabs (hover/tap the ⓘ guide to see what each means) */}
+      <div className="mt-5 flex flex-wrap items-center gap-2">
         {PIPELINE_TABS.map((t) => {
           const active = activeStatus === t.value;
           return (
             <Link
               key={t.label}
               href={tabHref(t.value)}
+              title={t.help}
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${
                 active
                   ? "bg-teal-700 text-white"
@@ -165,6 +187,30 @@ export default async function MembersPage({
           );
         })}
       </div>
+
+      {/* Plain-language guide to the card statuses, so staff aren't confused. */}
+      <details className="mt-2 text-sm">
+        <summary className="inline-flex cursor-pointer items-center gap-1 text-slate-500 transition-colors hover:text-slate-700">
+          <span className="flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[10px] font-semibold">
+            i
+          </span>
+          What do these statuses mean?
+        </summary>
+        <ul className="card mt-2 max-w-2xl divide-y divide-slate-100 p-0">
+          {PIPELINE_TABS.filter((t) => t.value !== null).map((t) => (
+            <li key={t.label} className="flex gap-3 px-4 py-2.5">
+              <span className="w-40 shrink-0 font-medium text-slate-800">{t.label}</span>
+              <span className="text-slate-500">{t.help}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 max-w-2xl text-xs text-slate-400">
+          Flow: a card is <span className="font-medium">Generated</span> (digital), then reviewed
+          &amp; <span className="font-medium">approved</span>, then{" "}
+          <span className="font-medium">sent to the printer</span>, and finally{" "}
+          <span className="font-medium">Printed</span> as a physical plastic card.
+        </p>
+      </details>
 
       {/* Search / filter */}
       <form className="mt-3 flex flex-wrap gap-2">

@@ -296,3 +296,144 @@ export async function getDashboardAnalytics(
     recentScans,
   };
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Platform-wide analytics (super admin) — aggregated across ALL
+   schools via the service-role admin client. Live-fed on the
+   super-admin dashboard.
+   ───────────────────────────────────────────────────────────── */
+
+/** One school bar (name + a numeric value), used by the per-school charts. */
+export interface SchoolBar {
+  label: string;
+  value: number;
+}
+
+/** Headline platform KPIs. */
+export interface PlatformKpis {
+  totalSchools: number;
+  totalBranches: number;
+  totalStudents: number;
+  totalStaff: number;
+  /** Members whose card is generated..printed. */
+  cardsGenerated: number;
+  /** Members still at not_generated. */
+  cardsNotGenerated: number;
+  /** Members whose physical card is printed. */
+  cardsPrinted: number;
+  /** Members currently at sent_for_printing. */
+  sentForPrinting: number;
+}
+
+export interface PlatformAnalytics {
+  kpis: PlatformKpis;
+  statusBreakdown: StatusSlice[];
+  generatedByDay: DayCount[];
+  studentsPerSchool: SchoolBar[];
+  branchesPerSchool: SchoolBar[];
+}
+
+const PLATFORM_GENERATED_ONWARD: PipelineStatus[] = [
+  "generated",
+  "print_approval_pending",
+  "sent_for_printing",
+  "printed",
+];
+const TOP_SCHOOLS = 10;
+
+/**
+ * Aggregate live analytics across every school. Pass the SERVICE-ROLE admin
+ * client (this is a cross-tenant view and must be super_admin-gated by the
+ * caller). Runs three selects and folds them in JS.
+ */
+export async function getPlatformAnalytics(
+  admin: SupabaseClient,
+): Promise<PlatformAnalytics> {
+  const [schoolsRes, branchesRes, membersRes] = await Promise.all([
+    admin.from("schools").select("id,name"),
+    admin.from("branches").select("school_id"),
+    admin
+      .from("members")
+      .select("school_id,member_type,pipeline_status,card_generated_at")
+      .limit(50000),
+  ]);
+
+  const schools = (schoolsRes.data ?? []) as { id: string; name: string }[];
+  const branches = (branchesRes.data ?? []) as { school_id: string }[];
+  const members = (membersRes.data ?? []) as unknown as {
+    school_id: string;
+    member_type: MemberType;
+    pipeline_status: PipelineStatus;
+    card_generated_at: string | null;
+  }[];
+
+  const schoolName = new Map(schools.map((s) => [s.id, s.name]));
+
+  const branchesBySchool = new Map<string, number>();
+  for (const b of branches) {
+    branchesBySchool.set(b.school_id, (branchesBySchool.get(b.school_id) ?? 0) + 1);
+  }
+
+  const studentsBySchool = new Map<string, number>();
+  const statusCounts = new Map<PipelineStatus, number>();
+  const dayCounts = new Map<string, number>();
+  let totalStudents = 0;
+  let totalStaff = 0;
+  let cardsGenerated = 0;
+  let cardsNotGenerated = 0;
+  let cardsPrinted = 0;
+  let sentForPrinting = 0;
+
+  for (const m of members) {
+    if (m.member_type === "student") {
+      totalStudents++;
+      studentsBySchool.set(m.school_id, (studentsBySchool.get(m.school_id) ?? 0) + 1);
+    } else if (m.member_type === "staff") {
+      totalStaff++;
+    }
+    statusCounts.set(m.pipeline_status, (statusCounts.get(m.pipeline_status) ?? 0) + 1);
+    if (m.pipeline_status === "not_generated") cardsNotGenerated++;
+    if (PLATFORM_GENERATED_ONWARD.includes(m.pipeline_status)) cardsGenerated++;
+    if (m.pipeline_status === "sent_for_printing") sentForPrinting++;
+    if (m.pipeline_status === "printed") cardsPrinted++;
+
+    const day = toDay(m.card_generated_at);
+    if (day) dayCounts.set(day, (dayCounts.get(day) ?? 0) + 1);
+  }
+
+  const statusBreakdown: StatusSlice[] = STATUS_ORDER.map((s) => ({
+    status: s.status,
+    label: s.label,
+    count: statusCounts.get(s.status) ?? 0,
+  }));
+  const generatedByDay: DayCount[] = recentDays(DAY_WINDOW).map((date) => ({
+    date,
+    count: dayCounts.get(date) ?? 0,
+  }));
+  const studentsPerSchool: SchoolBar[] = [...studentsBySchool.entries()]
+    .map(([id, value]) => ({ label: schoolName.get(id) ?? "Unknown", value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, TOP_SCHOOLS);
+  const branchesPerSchool: SchoolBar[] = [...branchesBySchool.entries()]
+    .map(([id, value]) => ({ label: schoolName.get(id) ?? "Unknown", value }))
+    .filter((x) => x.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, TOP_SCHOOLS);
+
+  return {
+    kpis: {
+      totalSchools: schools.length,
+      totalBranches: branches.length,
+      totalStudents,
+      totalStaff,
+      cardsGenerated,
+      cardsNotGenerated,
+      cardsPrinted,
+      sentForPrinting,
+    },
+    statusBreakdown,
+    generatedByDay,
+    studentsPerSchool,
+    branchesPerSchool,
+  };
+}

@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { getDashboardAnalytics } from "@/lib/analytics";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getDashboardAnalytics, getPlatformAnalytics } from "@/lib/analytics";
 import { getTrialStatus } from "@/lib/trial";
 import type { AppRole, PipelineStatus } from "@/lib/types";
 import DashboardView, { type DashboardMetrics, type SetupFlags } from "./DashboardView";
+import PlatformDashboard from "./PlatformDashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,14 @@ export default async function DashboardPage() {
     : { data: null };
   const schoolId = (profile?.school_id ?? null) as string | null;
   const role = (profile?.role ?? "operator") as AppRole;
+
+  // Super admin: show LIVE platform-wide analytics across every school (not a
+  // single tenant). Uses the service-role client — safe, this branch is
+  // super_admin-only.
+  if (role === "super_admin") {
+    const platform = await getPlatformAnalytics(createAdminClient());
+    return <PlatformDashboard data={platform} />;
+  }
 
   // Fresh head-count query against members for each funnel filter.
   const members = () =>
@@ -110,9 +120,9 @@ export default async function DashboardPage() {
     cardsGenerated: idGenerated > 0,
   };
 
-  // Prompt admins / super-admins to upload a logo when their school has none yet.
-  const needsLogo =
-    !callerLogoUrl && (role === "admin" || role === "super_admin");
+  // Prompt admins to upload a logo when their school has none yet. (Super admins
+  // are handled by the platform-analytics branch above and never reach here.)
+  const needsLogo = !callerLogoUrl && role === "admin";
 
   // Usage-based trial (only for trial schools — null otherwise). The (app)
   // layout already redirects expired trial schools away from here.
