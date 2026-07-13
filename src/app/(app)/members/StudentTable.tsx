@@ -228,7 +228,8 @@ export default function StudentTable({
 
       {/* Table */}
       <div className="card mt-5 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
               <th className="px-4 py-3">
@@ -366,6 +367,7 @@ export default function StudentTable({
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </>
   );

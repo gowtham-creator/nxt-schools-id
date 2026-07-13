@@ -25,7 +25,7 @@ async function ctx() {
 }
 
 /** Server-side photo size cap (bytes) — client-side resizing can be bypassed. */
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 /** Remove the given object paths from the photos bucket. Best-effort. */
 async function removeObjects(supabase: SupabaseClient, paths: string[]) {
@@ -57,7 +57,7 @@ export async function uploadMemberPhoto(
   if (!file.type.startsWith("image/"))
     return { url: null, error: "Please choose an image file" };
   if (file.size > MAX_PHOTO_BYTES)
-    return { url: null, error: "Photo is too large — maximum size is 2 MB" };
+    return { url: null, error: "Photo is too large — maximum size is 10 MB" };
 
   const memberId = ((fd.get("member_id") as string | null) || "").trim() || null;
   const bytes = new Uint8Array(await file.arrayBuffer());

@@ -41,7 +41,7 @@ export default async function TemplatesPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">ID Card Templates</h1>
           <p className="mt-1 text-sm text-slate-500">

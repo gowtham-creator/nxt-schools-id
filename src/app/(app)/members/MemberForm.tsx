@@ -90,10 +90,10 @@ export function MemberForm({
       </div>
 
       {/* Photo + core */}
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-6 sm:flex-row">
         <PhotoField initialUrl={member?.photo_url ?? null} memberId={member?.id ?? null} />
 
-        <div className="grid flex-1 grid-cols-2 gap-4">
+        <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="First name *" htmlFor="first_name">
             <input id="first_name" name="first_name" required defaultValue={member?.first_name ?? ""} className={inputCls} />
           </Field>
@@ -114,7 +114,7 @@ export function MemberForm({
       </div>
 
       {/* Type-specific */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {branches.length > 0 && (
           <Field label="Branch / Campus" htmlFor="branch_id">
             <select id="branch_id" name="branch_id" defaultValue={member?.branch_id ?? ""} className={inputCls}>
@@ -204,7 +204,7 @@ export function MemberForm({
       </div>
 
       {/* Contact / guardian */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Guardian name" htmlFor="guardian_name">
           <input id="guardian_name" name="guardian_name" defaultValue={member?.guardian_name ?? ""} className={inputCls} />
         </Field>
@@ -217,14 +217,14 @@ export function MemberForm({
         <Field label="Email" htmlFor="email">
           <input type="email" id="email" name="email" defaultValue={member?.email ?? ""} className={inputCls} />
         </Field>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <Field label="Address" htmlFor="address">
             <input id="address" name="address" defaultValue={member?.address ?? ""} className={inputCls} />
           </Field>
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <button type="submit" className="btn-primary">
           {submitLabel}
         </button>

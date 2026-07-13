@@ -99,7 +99,8 @@ export default async function BranchesPage({
 
       {/* Table */}
       <div className="card mt-5 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
@@ -164,6 +165,7 @@ export default async function BranchesPage({
             ))}
           </tbody>
         </table>
+        </div>
       </div>
       <p className="mt-2 text-xs text-slate-400">{branches.length} branch(es).</p>
     </div>

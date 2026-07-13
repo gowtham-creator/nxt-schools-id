@@ -202,6 +202,10 @@ export function PhotoCapture({
         setError("Please choose an image file.");
         return;
       }
+      if (file.size > 10 * 1024 * 1024) {
+        setError("Photo is too large — maximum size is 10 MB.");
+        return;
+      }
       setError("");
       const reader = new FileReader();
       reader.onload = () => {

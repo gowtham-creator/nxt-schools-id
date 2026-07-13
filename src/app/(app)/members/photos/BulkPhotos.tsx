@@ -54,7 +54,7 @@ export function BulkPhotos() {
         {files.length > 0 && (
           <div className="mt-4">
             <p className="text-sm text-slate-500">{files.length} file(s) selected</p>
-            <ul className="mt-2 grid max-h-40 grid-cols-2 gap-x-4 gap-y-1 overflow-auto text-xs text-slate-600">
+            <ul className="mt-2 grid max-h-40 grid-cols-1 gap-x-4 gap-y-1 overflow-auto text-xs text-slate-600 sm:grid-cols-2">
               {files.map((f) => (
                 <li key={f.name} className="truncate">
                   {f.name}
