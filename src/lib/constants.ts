@@ -46,6 +46,8 @@ export const BINDABLE_FIELDS = [
   { key: "school_name", label: "School name" },
   { key: "school_address", label: "School address" },
   { key: "school_phone", label: "School phone" },
+  { key: "academic_year", label: "Academic year" },
+  { key: "session", label: "Session line (SESSION …)" },
 ] as const;
 
 export const GENDERS = ["Male", "Female", "Other"] as const;

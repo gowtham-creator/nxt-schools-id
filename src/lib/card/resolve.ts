@@ -77,6 +77,14 @@ function memberValue(
       return school.phone ?? "";
     case "school_email":
       return school.email ?? "";
+    case "academic_year":
+      // The school's current academic year (edited under Settings). Drives the
+      // "SESSION …" line on cards so it reflects the live year, not a fixed one.
+      return school.academic_year ?? "";
+    case "session": {
+      const y = school.academic_year ?? "";
+      return y ? `SESSION ${y.replace("-", " – ")}` : "";
+    }
     default:
       return isMemberFieldKey(field) ? member[field] ?? "" : "";
   }

@@ -61,6 +61,8 @@ export const SAMPLE_DATA: Record<string, string> = {
   guardian_phone: "98765 43210",
   phone: "98765 00000",
   valid_until: "2026-03-31",
+  academic_year: "2026-27",
+  session: "SESSION 2026 – 27",
 };
 
 /** Build the id-keyed data map the CardSide renderer expects, for previews. */
