@@ -24,7 +24,11 @@ export type AuditAction =
   | "school.suspended"
   | "school.reactivated"
   | "school.logo_updated"
-  | "school.trial_updated";
+  | "school.trial_updated"
+  | "superadmin.created"
+  | "superadmin.suspended"
+  | "superadmin.reactivated"
+  | "superadmin.removed";
 
 interface LogAuditArgs {
   schoolId: string | null;

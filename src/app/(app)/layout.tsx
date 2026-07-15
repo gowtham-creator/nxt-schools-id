@@ -3,6 +3,7 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { getProfile } from "@/lib/auth";
 import { getTrialStatus } from "@/lib/trial";
 import { getImpersonation } from "@/lib/impersonation";
+import { isPlatformOwner } from "@/lib/platform-owner";
 import type { AppRole } from "@/lib/types";
 import AppShell from "./AppShell";
 
@@ -48,6 +49,15 @@ export default async function AppLayout({
     href: n.href,
     label: n.label,
   }));
+
+  // "Super Admins" management is owner-only — add it just after "Login activity".
+  if (isPlatformOwner(user.id)) {
+    const i = nav.findIndex((n) => n.href === "/platform/activity");
+    nav.splice(i >= 0 ? i + 1 : 1, 0, {
+      href: "/platform/admins",
+      label: "Super Admins",
+    });
+  }
 
   return (
     <AppShell

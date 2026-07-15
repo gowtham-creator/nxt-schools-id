@@ -37,6 +37,10 @@ const ACTION_META: Record<string, { label: string; className: string }> = {
   "school.suspended": { label: "School suspended", className: "bg-rose-50 text-rose-700" },
   "school.reactivated": { label: "School reactivated", className: "bg-emerald-50 text-emerald-700" },
   "school.trial_updated": { label: "Access limit updated", className: "bg-amber-50 text-amber-700" },
+  "superadmin.created": { label: "Super admin created", className: "bg-violet-50 text-violet-700" },
+  "superadmin.suspended": { label: "Super admin suspended", className: "bg-rose-50 text-rose-700" },
+  "superadmin.reactivated": { label: "Super admin reactivated", className: "bg-emerald-50 text-emerald-700" },
+  "superadmin.removed": { label: "Super admin removed", className: "bg-red-50 text-red-700" },
   "school.logo_updated": { label: "Logo updated", className: "bg-teal-50 text-teal-700" },
 };
 
