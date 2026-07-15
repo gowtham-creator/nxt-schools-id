@@ -30,9 +30,10 @@ async function ctx() {
 const MEMBER_SELECT =
   "id,school_id,member_type,identifier,first_name,last_name,photo_url,dob,gender,blood_group,class_id,roll_no,designation,department,guardian_name,guardian_phone,phone,email,address,valid_from,valid_until,status,qr_token,branch_id,template_id,academic_year_id,pipeline_status,card_pdf_url,card_generated_at,bg_removed,extra,created_at,updated_at";
 
-/** School columns the renderer + per-type template resolution need. */
+/** School columns the renderer + per-type template resolution need.
+ *  `academic_year` drives the dynamic "SESSION …" line on cards. */
 const SCHOOL_RENDER_SELECT =
-  "name,short_name,logo_url,address,phone,email,primary_color,secondary_color,student_template_id,staff_template_id";
+  "name,short_name,logo_url,address,phone,email,academic_year,primary_color,secondary_color,student_template_id,staff_template_id";
 
 /** Row shape returned by `SCHOOL_RENDER_SELECT`. */
 type SchoolRenderRow = Pick<
@@ -43,6 +44,7 @@ type SchoolRenderRow = Pick<
   | "address"
   | "phone"
   | "email"
+  | "academic_year"
   | "primary_color"
   | "secondary_color"
   | "student_template_id"
