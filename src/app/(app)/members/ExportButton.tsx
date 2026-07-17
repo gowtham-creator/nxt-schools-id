@@ -70,7 +70,9 @@ function buildWorkbook(rows: ExportRow[], photoFilenames?: Map<ExportRow, string
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Members");
-  return XLSX.write(wb, { type: "array", bookType: "xlsx" }) as Uint8Array;
+  // XLSX.write with type:"array" returns an ArrayBuffer — wrap it so the zip
+  // builder (and Blob) get a real Uint8Array with a valid .length.
+  return new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer);
 }
 
 /**
