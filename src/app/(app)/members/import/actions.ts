@@ -59,16 +59,49 @@ export async function importMembers(
     }
   }
 
+  // Resolve academic-year (batch) name -> id (find or create), scoped to school.
+  const yearMap = new Map<string, string>();
+  const { data: existingYears } = await admin
+    .from("academic_years")
+    .select("id,name")
+    .eq("school_id", schoolId);
+  for (const yr of existingYears ?? [])
+    yearMap.set((yr.name ?? "").trim().toLowerCase(), yr.id as string);
+  const wantedYears = new Set<string>();
+  for (const r of rows) {
+    const y = (r.academic_year ?? "").trim();
+    if (y) wantedYears.add(y);
+  }
+  for (const y of wantedYears) {
+    const key = y.toLowerCase();
+    if (!yearMap.has(key)) {
+      const { data } = await admin
+        .from("academic_years")
+        .insert({ school_id: schoolId, name: y, is_current: false })
+        .select("id")
+        .single();
+      if (data) yearMap.set(key, data.id as string);
+    }
+  }
+
+  // Words in a "type"/"role" column that mean staff (everything else = student).
+  const STAFF_WORDS = new Set([
+    "staff", "teacher", "teaching", "non-teaching", "employee", "faculty",
+    "principal", "admin", "teaching staff", "non teaching staff",
+  ]);
+
   const errors: string[] = [];
   const records: Record<string, unknown>[] = [];
   rows.forEach((r, i) => {
     const className = (r.class ?? "").trim();
+    const yearName = (r.academic_year ?? "").trim();
     const candidate = {
-      member_type: (r.member_type ?? "student").toLowerCase() === "staff" ? "staff" : "student",
+      member_type: STAFF_WORDS.has((r.member_type ?? "").trim().toLowerCase()) ? "staff" : "student",
       identifier: r.identifier ?? "",
       first_name: r.first_name ?? "",
       last_name: r.last_name ?? "",
       class_id: className ? (classMap.get(classKey(className, (r.section ?? "").trim())) ?? "") : "",
+      academic_year_id: yearName ? (yearMap.get(yearName.toLowerCase()) ?? "") : "",
       roll_no: r.roll_no ?? "",
       dob: r.dob ?? "",
       gender: r.gender ?? "",
@@ -77,6 +110,7 @@ export async function importMembers(
       guardian_phone: r.guardian_phone ?? "",
       phone: r.phone ?? "",
       email: r.email ?? "",
+      address: r.address ?? "",
       status: "active",
       photo_url: "",
     };

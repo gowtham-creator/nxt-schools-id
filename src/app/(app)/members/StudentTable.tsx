@@ -7,6 +7,7 @@ import { MEMBER_TYPE_LABELS } from "@/lib/constants";
 import type { PipelineStatus } from "@/lib/types";
 import { deleteMember } from "./actions";
 import { removeMemberPhoto } from "./photo-actions";
+import ExportButton from "./ExportButton";
 import {
   generateCard,
   advanceStatus,
@@ -146,6 +147,8 @@ export default function StudentTable({
           >
             Print sheet (A4)
           </button>
+
+          <ExportButton ids={ids()} label="Export selected" />
 
           <button
             type="button"

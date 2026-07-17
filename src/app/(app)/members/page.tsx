@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import type { PipelineStatus } from "@/lib/types";
 import StudentTable, { type MemberRow } from "./StudentTable";
+import ExportButton from "./ExportButton";
 import { uploadSchoolLogo } from "../settings/actions";
 
 export const dynamic = "force-dynamic";
@@ -152,6 +153,7 @@ export default async function MembersPage({
           <Link href="/members/import" className="btn-secondary">
             Import CSV/Excel
           </Link>
+          <ExportButton label="Export" />
           <Link href="/members/new" className="btn-primary">
             + Add member
           </Link>
