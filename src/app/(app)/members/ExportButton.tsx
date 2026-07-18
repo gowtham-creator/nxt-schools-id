@@ -89,6 +89,7 @@ export default function ExportButton({
 }) {
   const [busy, setBusy] = useState<"" | "xlsx" | "zip">("");
   const [note, setNote] = useState("");
+  const [progress, setProgress] = useState("");
 
   const stamp = new Date().toISOString().slice(0, 10);
 
@@ -112,6 +113,7 @@ export default function ExportButton({
   async function exportZip() {
     setBusy("zip");
     setNote("");
+    setProgress("");
     try {
       const rows = await getMembersForExport(ids);
       if (!rows.length) {
@@ -121,30 +123,50 @@ export default function ExportButton({
       const used = new Set<string>();
       const photoFilenames = new Map<ExportRow, string>();
       const files: ZipFile[] = [];
-      let withPhoto = 0;
+      const withPhotos = rows.filter((r) => r.photo_url);
+      let done = 0;
+      let ok = 0;
 
-      for (const r of rows) {
-        if (!r.photo_url) continue;
-        try {
-          const resp = await fetch(r.photo_url);
-          if (!resp.ok) continue;
-          const bytes = new Uint8Array(await resp.arrayBuffer());
-          const name = photoName(r, used);
-          photoFilenames.set(r, name);
-          files.push({ name: `photos/${name}`, data: bytes });
-          withPhoto++;
-        } catch {
-          /* skip a photo that won't fetch */
+      // Fetch photos with bounded concurrency (a worker pool), each with a
+      // timeout, so a big school's export finishes in seconds instead of
+      // stalling on hundreds of one-at-a-time round trips.
+      const CONCURRENCY = 12;
+      let idx = 0;
+      async function worker() {
+        while (idx < withPhotos.length) {
+          const r = withPhotos[idx++];
+          try {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 20000);
+            const resp = await fetch(r.photo_url, { signal: ctrl.signal });
+            clearTimeout(timer);
+            if (resp.ok) {
+              const bytes = new Uint8Array(await resp.arrayBuffer());
+              const name = photoName(r, used);
+              photoFilenames.set(r, name);
+              files.push({ name: `photos/${name}`, data: bytes });
+              ok++;
+            }
+          } catch {
+            /* skip a photo that won't fetch in time */
+          }
+          done++;
+          if (done % 5 === 0 || done === withPhotos.length) {
+            setProgress(`Bundling photos… ${done}/${withPhotos.length}`);
+          }
         }
       }
+      await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
+      setProgress("Building file…");
       files.unshift({ name: `members-${stamp}.xlsx`, data: buildWorkbook(rows, photoFilenames) });
       download(makeZip(files), `members-${stamp}.zip`);
-      setNote(`Exported ${rows.length} members${withPhoto ? ` + ${withPhoto} photos` : ""}.`);
+      setNote(`Exported ${rows.length} members${ok ? ` + ${ok} photos` : ""}.`);
     } catch {
       setNote("Export failed.");
     } finally {
       setBusy("");
+      setProgress("");
     }
   }
 
@@ -171,7 +193,7 @@ export default function ExportButton({
           className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
           <Images className="h-4 w-4 text-slate-400" />
-          {busy === "zip" ? "Bundling photos…" : "ZIP (with photos)"}
+          {busy === "zip" ? progress || "Preparing…" : "ZIP (with photos)"}
         </button>
         {note && <p className="px-3 py-1 text-xs text-slate-500">{note}</p>}
       </div>

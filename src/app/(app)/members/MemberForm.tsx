@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BLOOD_GROUPS, GENDERS, SECTIONS, gradeRank } from "@/lib/constants";
+import { BLOOD_GROUPS, GENDERS, SECTIONS, STANDARD_GRADES, gradeRank } from "@/lib/constants";
 import type { ClassRow, Member } from "@/lib/types";
 import { PhotoField } from "./PhotoField";
 
@@ -51,11 +51,13 @@ export function MemberForm({
 }: Props) {
   const [type, setType] = useState<"student" | "staff">(member?.member_type ?? "student");
 
-  // Distinct grade names for the "Class / Grade" select, ordered on the standard
-  // ladder (Nursery → 12th) via gradeRank; unknowns sort last, then alphabetical.
-  const gradeNames = [...new Set(classes.map((c) => c.name))].sort(
-    (a, b) => gradeRank(a) - gradeRank(b) || a.localeCompare(b),
-  );
+  // The Class / Grade select ALWAYS offers the full standard ladder (Nursery →
+  // 12th) merged with any custom classes the school already has, so every school
+  // sees all grades by default — even one with no classes seeded yet. The class
+  // row is found-or-created on save, so no pre-seeding is required.
+  const gradeNames = [
+    ...new Set<string>([...STANDARD_GRADES, ...classes.map((c) => c.name)]),
+  ].sort((a, b) => gradeRank(a) - gradeRank(b) || a.localeCompare(b));
 
   // In edit mode, split the member's saved class_id back into grade + section
   // so the two selects default to the right values.
