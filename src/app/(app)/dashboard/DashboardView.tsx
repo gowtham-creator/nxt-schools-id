@@ -15,6 +15,8 @@ import {
   Settings,
   Printer,
   ChevronRight,
+  PenLine,
+  FileSpreadsheet,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -80,17 +82,27 @@ interface Stage {
   icon: LucideIcon;
 }
 
+export interface ImportStats {
+  count: number;
+  totalImported: number;
+  lastAt: string | null;
+}
+
 export default function DashboardView({
   metrics,
   analytics,
   setup,
   needsLogo,
+  needsSignature = false,
+  importStats,
   trial,
 }: {
   metrics: DashboardMetrics;
   analytics: AnalyticsData;
   setup: SetupFlags;
   needsLogo: boolean;
+  needsSignature?: boolean;
+  importStats?: ImportStats;
   trial?: TrialStatus | null;
 }) {
   const reduce = useReducedMotion();
@@ -208,6 +220,24 @@ export default function DashboardView({
           </p>
           <Link href="/settings" className="btn-primary btn-sm ml-auto">
             Upload logo
+          </Link>
+        </motion.div>
+      )}
+
+      {/* Add-your-signature prompt — admins whose school has no principal signature yet */}
+      {needsSignature && (
+        <motion.div
+          variants={item}
+          className="card mb-6 flex flex-wrap items-center gap-4 border-teal-200 bg-teal-50/60 p-5"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+            <PenLine className="h-5 w-5" />
+          </div>
+          <p className="text-sm font-medium text-slate-800">
+            Add the principal&rsquo;s signature so it appears on every ID card.
+          </p>
+          <Link href="/settings" className="btn-primary btn-sm ml-auto">
+            Upload signature
           </Link>
         </motion.div>
       )}
@@ -341,6 +371,54 @@ export default function DashboardView({
           </Fragment>
         ))}
       </div>
+
+      {/* Data imported — Excel/CSV upload activity */}
+      {importStats && (
+        <motion.div variants={item} className="card mt-4 p-5">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+              <FileSpreadsheet className="h-5 w-5" />
+            </div>
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+              <div>
+                <div className="text-2xl font-bold leading-none tabular-nums text-slate-900">
+                  {importStats.count}
+                </div>
+                <div className="mt-1 text-xs font-medium text-slate-500">
+                  Excel/CSV uploads
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold leading-none tabular-nums text-slate-900">
+                  {importStats.totalImported}
+                </div>
+                <div className="mt-1 text-xs font-medium text-slate-500">
+                  Records imported
+                </div>
+              </div>
+              {importStats.lastAt && (
+                <div>
+                  <div
+                    suppressHydrationWarning
+                    className="text-sm font-semibold leading-none text-slate-700"
+                  >
+                    {new Date(importStats.lastAt).toLocaleString([], {
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                  <div className="mt-1 text-xs font-medium text-slate-500">Last upload</div>
+                </div>
+              )}
+            </div>
+            <Link href="/members/import" className="btn-secondary btn-sm ml-auto">
+              Import data
+            </Link>
+          </div>
+        </motion.div>
+      )}
 
       {/* Analytics */}
       <motion.h2

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAudit } from "@/lib/audit";
 import { memberSchema } from "@/lib/validators";
 
 type ImportRow = Record<string, string>;
@@ -127,6 +128,18 @@ export async function importMembers(
     else inserted += chunk.length;
   }
 
+  const failed = rows.length - inserted;
+  // Record the import so it shows in Recent activity / Audit log with a
+  // success/failed status, and feeds the dashboard "Data imported" tile.
+  await logAudit(admin, {
+    schoolId,
+    actorId: user.id,
+    action: "members.imported",
+    targetType: "members",
+    meta: { total: rows.length, imported: inserted, failed, status: failed === 0 ? "success" : "partial" },
+  });
+
   revalidatePath("/members");
-  return { inserted, failed: rows.length - inserted, errors: errors.slice(0, 25) };
+  revalidatePath("/dashboard");
+  return { inserted, failed, errors: errors.slice(0, 25) };
 }

@@ -13,6 +13,7 @@ export type AuditAction =
   | "sheet.printed"
   | "member.created"
   | "member.deleted"
+  | "members.imported"
   | "user.login"
   | "user.invited"
   | "user.role_changed"

@@ -61,13 +61,14 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase
       .from("schools")
-      .select("logo_url, phone, student_template_id")
+      .select("logo_url, signature_url, phone, student_template_id")
       .limit(1)
       .maybeSingle()
       .then(
         (r) =>
           (r.data ?? null) as {
             logo_url: string | null;
+            signature_url: string | null;
             phone: string | null;
             student_template_id: string | null;
           } | null,
@@ -123,6 +124,29 @@ export default async function DashboardPage() {
   // Prompt admins to upload a logo when their school has none yet. (Super admins
   // are handled by the platform-analytics branch above and never reach here.)
   const needsLogo = !callerLogoUrl && role === "admin";
+  // Same prompt for the principal signature.
+  const needsSignature = !school?.signature_url && role === "admin";
+
+  // Excel/CSV import activity: how many imports were run and how many rows landed.
+  const importRows = schoolId
+    ? ((
+        await supabase
+          .from("audit_log")
+          .select("changes, created_at")
+          .eq("school_id", schoolId)
+          .eq("action", "members.imported")
+          .order("created_at", { ascending: false })
+      ).data ?? [])
+    : [];
+  const importStats = {
+    count: importRows.length,
+    totalImported: importRows.reduce(
+      (sum, r) =>
+        sum + Number((r.changes as { imported?: number } | null)?.imported ?? 0),
+      0,
+    ),
+    lastAt: importRows[0]?.created_at ?? null,
+  };
 
   // Usage-based trial (only for trial schools — null otherwise). The (app)
   // layout already redirects expired trial schools away from here.
@@ -134,6 +158,8 @@ export default async function DashboardPage() {
       analytics={analytics}
       setup={setup}
       needsLogo={needsLogo}
+      needsSignature={needsSignature}
+      importStats={importStats}
       trial={trial}
     />
   );
