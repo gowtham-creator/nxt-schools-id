@@ -54,6 +54,51 @@ export async function uploadSchoolLogo(fd: FormData) {
   redirect(`/settings?ok=${encodeURIComponent("Logo updated - it now appears on every generated card")}`);
 }
 
+/**
+ * Upload the principal's signature to the public `logos` bucket and save its URL
+ * on the school. Admin+ only; scoped to the caller's school. Appears on every
+ * generated card that has a signature slot (near the "Principal" sign line).
+ */
+export async function uploadSchoolSignature(fd: FormData) {
+  const profile = await requireRole(["super_admin", "admin"]);
+  if (!profile.school_id) redirect("/settings?error=No+school+assigned+to+your+account");
+
+  const file = fd.get("signature");
+  if (!(file instanceof File) || file.size === 0) {
+    redirect("/settings?error=Choose+a+signature+file+first");
+  }
+  const ext = LOGO_TYPES[file.type];
+  if (!ext) redirect("/settings?error=Signature+must+be+PNG%2C+JPG%2C+SVG+or+WebP");
+  if (file.size > 2 * 1024 * 1024) redirect("/settings?error=Signature+must+be+under+2+MB");
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const admin = createAdminClient();
+  const path = `${profile.school_id}/signature-${new (globalThis.Date)().getTime()}.${ext}`;
+  const { error: upErr } = await admin.storage
+    .from("logos")
+    .upload(path, bytes, { upsert: true, contentType: file.type });
+  if (upErr) redirect(`/settings?error=${encodeURIComponent(`Upload failed: ${upErr.message}`)}`);
+
+  const { data: pub } = admin.storage.from("logos").getPublicUrl(path);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schools")
+    .update({ signature_url: pub.publicUrl, updated_at: new (globalThis.Date)().toISOString() })
+    .eq("id", profile.school_id);
+  if (error)
+    redirect(
+      `/settings?error=${encodeURIComponent(
+        error.message.includes("signature_url")
+          ? "Run the signature_url migration first (see supabase/migrations)."
+          : error.message,
+      )}`,
+    );
+
+  revalidatePath("/settings");
+  revalidatePath("/templates");
+  redirect(`/settings?ok=${encodeURIComponent("Principal signature updated")}`);
+}
+
 /** Trim a form value; empty string -> null (so blanked-out fields clear the column). */
 function str(fd: FormData, key: string): string | null {
   const v = fd.get(key);

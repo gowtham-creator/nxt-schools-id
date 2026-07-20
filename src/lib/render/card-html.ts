@@ -122,9 +122,10 @@ function elementHtml(
         (el.src ? data[el.src] ?? (ASSET_RE.test(el.src) ? el.src : undefined) : undefined);
       const d = [...baseDecls(el, scale, z), "overflow:hidden"];
       if (el.radius) d.push(`border-radius:${mmToPx(el.radius, scale)}px`);
-      // A missing photo keeps a subtle placeholder; a missing school logo renders
-      // transparent (no ugly grey box on schools that haven't uploaded a logo yet).
-      if (!src && el.src !== "logo") d.push("background-color:#e2e8f0");
+      // A missing photo keeps a subtle placeholder; a missing school logo or
+      // signature renders transparent (no ugly grey box when not uploaded yet).
+      if (!src && el.src !== "logo" && el.src !== "signature")
+        d.push("background-color:#e2e8f0");
       const img = src
         ? `<img src="${esc(src)}" alt="" style="width:100%;height:100%;object-fit:${
             el.fit ?? "cover"

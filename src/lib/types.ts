@@ -17,6 +17,8 @@ export interface School {
   name: string;
   short_name: string | null;
   logo_url: string | null;
+  /** Principal's signature image, shown on generated cards near the sign line. */
+  signature_url: string | null;
   address: string | null;
   phone: string | null;
   email: string | null;

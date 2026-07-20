@@ -33,7 +33,7 @@ const MEMBER_SELECT =
 /** School columns the renderer + per-type template resolution need.
  *  `academic_year` drives the dynamic "SESSION …" line on cards. */
 const SCHOOL_RENDER_SELECT =
-  "name,short_name,logo_url,address,phone,email,academic_year,primary_color,secondary_color,student_template_id,staff_template_id";
+  "name,short_name,logo_url,signature_url,address,phone,email,academic_year,primary_color,secondary_color,student_template_id,staff_template_id";
 
 /** Row shape returned by `SCHOOL_RENDER_SELECT`. */
 type SchoolRenderRow = Pick<
@@ -41,6 +41,7 @@ type SchoolRenderRow = Pick<
   | "name"
   | "short_name"
   | "logo_url"
+  | "signature_url"
   | "address"
   | "phone"
   | "email"

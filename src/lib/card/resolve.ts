@@ -122,7 +122,9 @@ export async function resolveSide(
             ? member.photo_url ?? ""
             : el.src === "logo"
               ? school.logo_url ?? ""
-              : el.src ?? "";
+              : el.src === "signature"
+                ? school.signature_url ?? ""
+                : el.src ?? "";
         break;
       }
 

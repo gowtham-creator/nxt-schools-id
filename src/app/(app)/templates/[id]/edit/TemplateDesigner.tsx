@@ -29,6 +29,7 @@ const PALETTE: { type: TemplateElementType; label: string; icon: string }[] = [
 const IMAGE_BINDINGS = [
   { value: "photo_url", label: "Member photo" },
   { value: "logo", label: "School logo" },
+  { value: "signature", label: "Principal signature" },
 ];
 const CODE_BINDINGS = [
   { value: "qr_token", label: "Verify QR (qr_token)" },

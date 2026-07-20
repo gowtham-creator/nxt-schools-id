@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireRole, getProfile } from "@/lib/auth";
 import type { School } from "@/lib/types";
-import { updateSchool, uploadSchoolLogo } from "./actions";
+import { updateSchool, uploadSchoolLogo, uploadSchoolSignature } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -181,6 +181,40 @@ export default async function SettingsPage({
             </p>
           </div>
           <button className="btn-primary btn-sm shrink-0">Upload logo</button>
+        </div>
+      </form>
+
+      {/* Principal signature — appears on generated cards near the sign line */}
+      <form action={uploadSchoolSignature} className="card mt-5 p-6">
+        <label htmlFor="signature" className="field-label">Principal signature</label>
+        <div className="mt-2 flex flex-wrap items-center gap-5">
+          {school?.signature_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={school.signature_url}
+              alt="Principal signature"
+              className="h-16 w-auto max-w-40 rounded-md border border-slate-200 bg-white object-contain p-1"
+            />
+          ) : (
+            <div className="flex h-16 w-24 items-center justify-center rounded-md border border-dashed border-slate-300 text-center text-xs text-slate-400">
+              No signature yet
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <input
+              id="signature"
+              name="signature"
+              type="file"
+              required
+              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              className="block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-50"
+            />
+            <p className="field-hint">
+              PNG on a transparent background works best · max 2 MB. Appears above the
+              &ldquo;Principal&rdquo; line on cards that have a signature slot.
+            </p>
+          </div>
+          <button className="btn-primary btn-sm shrink-0">Upload signature</button>
         </div>
       </form>
     </div>

@@ -78,7 +78,11 @@ export function buildPreviewData(
       d[el.id] = (el.field && SAMPLE_DATA[el.field]) || (el.field ? `{${el.field}}` : "");
     else if (el.type === "image") {
       const src =
-        el.src === "logo" ? opts?.logo ?? "" : el.src === "photo_url" ? "" : el.src ?? "";
+        el.src === "logo"
+          ? opts?.logo ?? ""
+          : el.src === "photo_url" || el.src === "signature"
+            ? ""
+            : el.src ?? "";
       if (src) d[el.id] = src;
     }
     // qr / barcode render as a white box in preview; the real code is generated at print time.
