@@ -15,6 +15,7 @@ import {
   bulkAssignTemplate,
   bulkAdvance,
   printSheet,
+  printCardGrid,
 } from "./card-actions";
 
 /** Row shape built by members/page.tsx and handed to this table. */
@@ -146,6 +147,21 @@ export default function StudentTable({
             className="btn-secondary btn-sm"
           >
             Print sheet (A4)
+          </button>
+
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                const r = await printCardGrid(ids(), 5, 5);
+                if (r.url) window.open(r.url, "_blank");
+                setNote(r.error ?? (r.url ? "5×5 sheet ready." : ""));
+              })
+            }
+            className="btn-secondary btn-sm"
+          >
+            5×5 sheet
           </button>
 
           <ExportButton ids={ids()} label="Export selected" />

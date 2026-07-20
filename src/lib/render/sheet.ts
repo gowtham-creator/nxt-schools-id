@@ -113,6 +113,91 @@ function groupPages(
 }
 
 /**
+ * Render a grid "card image set" — `cols`×`rows` card FRONTS per A4 page (e.g.
+ * 5×5 = 25 per page), each scaled to fit its cell (CR80 cards larger than a cell
+ * are shrunk, preserving aspect). Fronts only; a review/print-proof sheet, not a
+ * duplex print run. Extra cards flow onto more pages.
+ */
+export async function renderCardGridPdf(
+  entries: SheetEntry[],
+  school: Partial<School>,
+  cols = 5,
+  rows = 5,
+): Promise<Uint8Array> {
+  const scale = CSS_PX_PER_MM;
+  const MARGIN = 6;
+  const GUTTER = 3;
+  const perPage = cols * rows;
+
+  const fronts = await Promise.all(
+    entries.map(async (entry) => {
+      const data = await resolveSide(entry.template.front, entry.member, entry.classRow, school);
+      return {
+        html: cardSideToHtml(
+          entry.template.front,
+          data,
+          entry.template.width_mm,
+          entry.template.height_mm,
+          scale,
+          true,
+        ),
+        w: entry.template.width_mm,
+        h: entry.template.height_mm,
+      };
+    }),
+  );
+
+  const cellW = (SHEET_A4.widthMm - 2 * MARGIN - (cols - 1) * GUTTER) / cols;
+  const cellH = (SHEET_A4.heightMm - 2 * MARGIN - (rows - 1) * GUTTER) / rows;
+
+  const pages: string[] = [];
+  for (let start = 0; start < fronts.length; start += perPage) {
+    const chunk = fronts.slice(start, start + perPage);
+    const cells = chunk.map((card, i) => {
+      const row = Math.floor(i / cols);
+      const col = i % cols;
+      const fit = Math.min(cellW / card.w, cellH / card.h);
+      const drawW = card.w * fit;
+      const drawH = card.h * fit;
+      const leftMm = MARGIN + col * (cellW + GUTTER) + (cellW - drawW) / 2;
+      const topMm = MARGIN + row * (cellH + GUTTER) + (cellH - drawH) / 2;
+      const outer = [
+        "position:absolute",
+        `left:${leftMm * scale}px`,
+        `top:${topMm * scale}px`,
+        `width:${drawW * scale}px`,
+        `height:${drawH * scale}px`,
+        `outline:${CUT_GUIDE_MM * scale}px solid #BBBBBB`,
+        "overflow:hidden",
+      ].join(";");
+      const inner = `width:${card.w * scale}px;height:${card.h * scale}px;transform:scale(${fit});transform-origin:top left`;
+      return `<div style="${outer}"><div style="${inner}">${card.html}</div></div>`;
+    });
+    pages.push(`<div class="pg">${cells.join("")}</div>`);
+  }
+
+  const fonts =
+    '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&display=swap">';
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">${fonts}<style>@page{size:A4;margin:0} html,body{margin:0;padding:0} *{-webkit-print-color-adjust:exact;print-color-adjust:exact} .pg{page-break-after:always;position:relative;width:${SHEET_A4.widthMm}mm;height:${SHEET_A4.heightMm}mm}</style></head><body>${pages.join("")}</body></html>`;
+
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.setContent(html, { waitUntil: "load" });
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    return await page.pdf({
+      width: `${SHEET_A4.widthMm}mm`,
+      height: `${SHEET_A4.heightMm}mm`,
+      printBackground: true,
+    });
+  } finally {
+    await page.close();
+  }
+}
+
+/**
  * Render a batch of cards to a single duplex-ready A4 PDF as a `Uint8Array`.
  * Page order per chunk: fronts sheet, then the matching (mirrored) backs sheet.
  */

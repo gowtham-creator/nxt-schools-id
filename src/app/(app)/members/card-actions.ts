@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { renderCardPdf } from "@/lib/render/pdf";
-import { renderPrintSheetPdf, type SheetEntry } from "@/lib/render/sheet";
+import { renderPrintSheetPdf, renderCardGridPdf, type SheetEntry } from "@/lib/render/sheet";
 import { logAudit } from "@/lib/audit";
 import type { IdTemplate, Member, PipelineStatus, School } from "@/lib/types";
 
@@ -399,6 +399,96 @@ export async function printSheet(
       meta: { count: entries.length, ids },
     });
 
+    return { url: signed.signedUrl, error: null };
+  } catch (err) {
+    return { url: null, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
+ * Build a "card image set": `cols`×`rows` card fronts per A4 page (default 5×5 =
+ * 25 per page), scaled to fit. Returns a signed download URL. Mirrors printSheet
+ * but renders a grid proof sheet instead of a duplex print run.
+ */
+export async function printCardGrid(
+  ids: string[],
+  cols = 5,
+  rows = 5,
+): Promise<{ url: string | null; error: string | null }> {
+  const { supabase, schoolId, user } = await ctx();
+  if (!schoolId) return { url: null, error: "No school assigned to your account" };
+  if (ids.length === 0) return { url: null, error: "No members selected" };
+
+  try {
+    const { data: members, error: membersErr } = await supabase
+      .from("members")
+      .select(MEMBER_SELECT)
+      .in("id", ids)
+      .eq("school_id", schoolId);
+    if (membersErr) return { url: null, error: membersErr.message };
+    const rows_ = (members ?? []) as Member[];
+    if (rows_.length === 0) return { url: null, error: "No members found" };
+
+    const { data: school } = await supabase
+      .from("schools")
+      .select(SCHOOL_RENDER_SELECT)
+      .eq("id", schoolId)
+      .single<SchoolRenderRow>();
+    if (!school) return { url: null, error: "School not found" };
+
+    const classIds = [
+      ...new Set(rows_.map((m) => m.class_id).filter((v): v is string => v != null)),
+    ];
+    const classMap = new Map<string, { name: string; section: string | null }>();
+    if (classIds.length > 0) {
+      const { data: classes } = await supabase
+        .from("classes")
+        .select("id,name,section")
+        .in("id", classIds);
+      for (const c of (classes ?? []) as { id: string; name: string; section: string | null }[]) {
+        classMap.set(c.id, { name: c.name, section: c.section });
+      }
+    }
+
+    const templateCache = new Map<string, IdTemplate | null>();
+    const entries: SheetEntry[] = [];
+    for (const member of rows_) {
+      const cacheKey = member.template_id ?? `type:${member.member_type}`;
+      let template = templateCache.get(cacheKey);
+      if (template === undefined) {
+        template = await resolveTemplate(supabase, schoolId, member, school);
+        templateCache.set(cacheKey, template);
+      }
+      if (!template) {
+        const name = [member.first_name, member.last_name].filter(Boolean).join(" ");
+        return { url: null, error: `No template found for ${name}` };
+      }
+      entries.push({
+        template,
+        member,
+        classRow: member.class_id ? classMap.get(member.class_id) ?? null : null,
+      });
+    }
+
+    const pdf: Uint8Array = await renderCardGridPdf(entries, school, cols, rows);
+    const path = `${schoolId}/sheets/grid-${new (globalThis.Date)().getTime()}.pdf`;
+    const { error: uploadErr } = await supabase.storage
+      .from("cards")
+      .upload(path, pdf, { upsert: true, contentType: "application/pdf" });
+    if (uploadErr) return { url: null, error: `upload: ${uploadErr.message}` };
+
+    const { data: signed } = await supabase.storage
+      .from("cards")
+      .createSignedUrl(path, 60 * 60 * 24);
+    if (!signed?.signedUrl) return { url: null, error: "Could not create a download link" };
+
+    await logAudit(supabase, {
+      schoolId,
+      actorId: user.id,
+      action: "sheet.printed",
+      targetType: "member",
+      meta: { count: entries.length, grid: `${cols}x${rows}`, ids },
+    });
     return { url: signed.signedUrl, error: null };
   } catch (err) {
     return { url: null, error: err instanceof Error ? err.message : String(err) };
