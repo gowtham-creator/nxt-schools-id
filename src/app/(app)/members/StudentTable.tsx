@@ -123,15 +123,32 @@ export default function StudentTable({
           <button
             type="button"
             disabled={pending}
+            title="Generate (or re-generate) the ID card PDF for every selected member — picks up template, photo and principal-signature changes."
             onClick={() =>
-              run(async () => {
-                const r = await bulkGenerate(ids());
-                return `Generated ${r.ok}, failed ${r.failed}.`;
+              // Chunked so large batches (e.g. re-generating a whole school after
+              // adding a principal signature) never exceed the serverless render
+              // budget: each chunk is its own server action, with live progress.
+              startTransition(async () => {
+                const all = ids();
+                const CHUNK = 25;
+                let ok = 0;
+                let failed = 0;
+                for (let i = 0; i < all.length; i += CHUNK) {
+                  const r = await bulkGenerate(all.slice(i, i + CHUNK));
+                  ok += r.ok;
+                  failed += r.failed;
+                  setNote(
+                    `Generating IDs… ${Math.min(i + CHUNK, all.length)}/${all.length} done (ok ${ok}, failed ${failed})`,
+                  );
+                }
+                setNote(`Generated ${ok}, failed ${failed}.`);
+                setSelected(new Set());
+                router.refresh();
               })
             }
             className="btn-primary btn-sm"
           >
-            Generate IDs
+            {selected.size > 1 ? "Generate / Regenerate IDs" : "Generate IDs"}
           </button>
 
           <button
