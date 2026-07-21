@@ -251,6 +251,23 @@ export async function bulkGenerate(ids: string[]): Promise<{ ok: number; failed:
   return { ok, failed };
 }
 
+/**
+ * Every member id for the caller's school (unpaginated). Powers the members
+ * "Regenerate all cards" button so a whole school can be re-rendered even though
+ * the table itself only lists the first page. Ids only — cheap to ship.
+ */
+export async function allMemberIds(): Promise<string[]> {
+  const { supabase, schoolId } = await ctx();
+  if (!schoolId) return [];
+  const { data } = await supabase
+    .from("members")
+    .select("id")
+    .eq("school_id", schoolId)
+    .order("created_at", { ascending: false })
+    .limit(10000);
+  return (data ?? []).map((r) => (r as { id: string }).id);
+}
+
 /** Assigns one template to many members (scoped to the caller's school). */
 export async function bulkAssignTemplate(
   ids: string[],

@@ -16,6 +16,7 @@ import {
   bulkAdvance,
   printSheet,
   printCardGrid,
+  allMemberIds,
 } from "./card-actions";
 
 /** Row shape built by members/page.tsx and handed to this table. */
@@ -103,6 +104,33 @@ export default function StudentTable({
     });
   };
 
+  /**
+   * (Re)generate a set of ids in sequential chunks, with live progress. Chunking
+   * keeps each server action well under the serverless render budget, so even a
+   * whole-school re-generation (hundreds of cards) completes reliably. Await this
+   * inside a startTransition so `pending` stays true for the full run.
+   */
+  const generateInChunks = async (all: string[]) => {
+    if (all.length === 0) {
+      setNote("No members to generate.");
+      return;
+    }
+    const CHUNK = 25;
+    let ok = 0;
+    let failed = 0;
+    for (let i = 0; i < all.length; i += CHUNK) {
+      const r = await bulkGenerate(all.slice(i, i + CHUNK));
+      ok += r.ok;
+      failed += r.failed;
+      setNote(
+        `Generating IDs… ${Math.min(i + CHUNK, all.length)}/${all.length} done (ok ${ok}, failed ${failed})`,
+      );
+    }
+    setNote(`Generated ${ok}, failed ${failed}.`);
+    setSelected(new Set());
+    router.refresh();
+  };
+
   const ids = () => Array.from(selected);
 
   /** One-click photo delete from the list (removes the file + clears the field). */
@@ -115,6 +143,34 @@ export default function StudentTable({
 
   return (
     <>
+      {/* Always-visible school-wide actions (works past the table's first page). */}
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          title="Re-generate the ID card PDF for EVERY member in this school (all pages, not just those shown), in safe chunks. Use after changing the template or adding a principal signature."
+          onClick={() => {
+            if (
+              !window.confirm(
+                "Re-generate ID cards for ALL members in this school? This re-renders every card (all pages) and can take a few minutes for large schools.",
+              )
+            )
+              return;
+            startTransition(async () => {
+              setNote("Loading members…");
+              const all = await allMemberIds();
+              await generateInChunks(all);
+            });
+          }}
+          className="btn-secondary btn-sm"
+        >
+          Regenerate all cards
+        </button>
+        {(pending || note) && (
+          <span className="text-xs text-slate-500">{pending ? note || "Working…" : note}</span>
+        )}
+      </div>
+
       {/* Sticky bulk action bar */}
       {selected.size > 0 && (
         <div className="card sticky top-0 z-10 mt-5 flex flex-wrap items-center gap-2 p-3">
@@ -124,28 +180,7 @@ export default function StudentTable({
             type="button"
             disabled={pending}
             title="Generate (or re-generate) the ID card PDF for every selected member — picks up template, photo and principal-signature changes."
-            onClick={() =>
-              // Chunked so large batches (e.g. re-generating a whole school after
-              // adding a principal signature) never exceed the serverless render
-              // budget: each chunk is its own server action, with live progress.
-              startTransition(async () => {
-                const all = ids();
-                const CHUNK = 25;
-                let ok = 0;
-                let failed = 0;
-                for (let i = 0; i < all.length; i += CHUNK) {
-                  const r = await bulkGenerate(all.slice(i, i + CHUNK));
-                  ok += r.ok;
-                  failed += r.failed;
-                  setNote(
-                    `Generating IDs… ${Math.min(i + CHUNK, all.length)}/${all.length} done (ok ${ok}, failed ${failed})`,
-                  );
-                }
-                setNote(`Generated ${ok}, failed ${failed}.`);
-                setSelected(new Set());
-                router.refresh();
-              })
-            }
+            onClick={() => startTransition(() => generateInChunks(ids()))}
             className="btn-primary btn-sm"
           >
             {selected.size > 1 ? "Generate / Regenerate IDs" : "Generate IDs"}
@@ -255,10 +290,6 @@ export default function StudentTable({
               Override
             </button>
           </div>
-
-          {(pending || note) && (
-            <span className="text-xs text-slate-500">{pending ? "Working…" : note}</span>
-          )}
         </div>
       )}
 
