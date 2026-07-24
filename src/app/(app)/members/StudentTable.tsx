@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Printer } from "lucide-react";
 import { MEMBER_TYPE_LABELS } from "@/lib/constants";
 import type { PipelineStatus } from "@/lib/types";
 import { deleteMember } from "./actions";
@@ -76,6 +77,9 @@ export default function StudentTable({
   const [assignTemplateId, setAssignTemplateId] = useState<string>(templates[0]?.id ?? "");
   const [advanceTo, setAdvanceTo] = useState<PipelineStatus>("sent_for_printing");
   const [note, setNote] = useState<string>("");
+  // Generated A4 PDF links. We render clickable links (not window.open) because a
+  // popup opened after an await is blocked by browsers — which looked like "can't print".
+  const [printUrls, setPrintUrls] = useState<{ label: string; url: string }[]>([]);
 
   const allSelected = rows.length > 0 && selected.size === rows.length;
 
@@ -131,6 +135,35 @@ export default function StudentTable({
     router.refresh();
   };
 
+  /**
+   * Build A4 verification sheets (5×5 card grid, fronts) for many ids in chunks,
+   * collecting a download link per chunk. Chunking keeps each render under the
+   * serverless budget so a whole school (hundreds of cards) can be printed.
+   */
+  const printSheetsInChunks = async (all: string[]) => {
+    if (all.length === 0) {
+      setNote("No members to print.");
+      return;
+    }
+    const CHUNK = 100;
+    const total = Math.ceil(all.length / CHUNK);
+    const urls: { label: string; url: string }[] = [];
+    setPrintUrls([]);
+    for (let i = 0; i < all.length; i += CHUNK) {
+      const part = i / CHUNK + 1;
+      setNote(`Building A4 sheet ${part}/${total}…`);
+      const r = await printCardGrid(all.slice(i, i + CHUNK), 5, 5);
+      if (r.url) {
+        urls.push({ label: total > 1 ? `A4 sheet ${part} of ${total}` : "A4 sheet", url: r.url });
+        setPrintUrls([...urls]);
+      } else {
+        setNote(r.error ?? "Could not build the sheet.");
+        return;
+      }
+    }
+    setNote(`Ready — ${urls.length} A4 sheet${urls.length === 1 ? "" : "s"}. Click below to open & print.`);
+  };
+
   const ids = () => Array.from(selected);
 
   /** One-click photo delete from the list (removes the file + clears the field). */
@@ -166,10 +199,51 @@ export default function StudentTable({
         >
           Regenerate all cards
         </button>
+
+        <button
+          type="button"
+          disabled={pending}
+          title="Build printable A4 sheets of every generated card in this school (all pages), for verification. Fronts, 25 cards per page, in chunks."
+          onClick={() => {
+            if (
+              !window.confirm(
+                "Build A4 verification sheets for ALL members in this school? This renders every card into printable A4 pages.",
+              )
+            )
+              return;
+            startTransition(async () => {
+              setNote("Loading members…");
+              const all = await allMemberIds();
+              await printSheetsInChunks(all);
+            });
+          }}
+          className="btn-secondary btn-sm"
+        >
+          Print all cards (A4)
+        </button>
+
         {(pending || note) && (
           <span className="text-xs text-slate-500">{pending ? note || "Working…" : note}</span>
         )}
       </div>
+
+      {/* Generated A4 sheet links — clicked directly by the user, so no popup block. */}
+      {printUrls.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-slate-500">Open / print:</span>
+          {printUrls.map((p) => (
+            <a
+              key={p.url}
+              href={p.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary btn-sm inline-flex items-center gap-1"
+            >
+              <Printer className="h-3.5 w-3.5" /> {p.label}
+            </a>
+          ))}
+        </div>
+      )}
 
       {/* Sticky bulk action bar */}
       {selected.size > 0 && (
@@ -191,9 +265,13 @@ export default function StudentTable({
             disabled={pending}
             onClick={() =>
               startTransition(async () => {
+                setPrintUrls([]);
+                setNote("Building A4 print sheet…");
                 const r = await printSheet(ids());
-                if (r.url) window.open(r.url, "_blank");
-                setNote(r.error ?? (r.url ? "Print sheet ready." : ""));
+                if (r.url) {
+                  setPrintUrls([{ label: "A4 print sheet (duplex)", url: r.url }]);
+                  setNote("Ready — click below to open & print.");
+                } else setNote(r.error ?? "Could not build the sheet.");
               })
             }
             className="btn-secondary btn-sm"
@@ -206,9 +284,13 @@ export default function StudentTable({
             disabled={pending}
             onClick={() =>
               startTransition(async () => {
+                setPrintUrls([]);
+                setNote("Building 5×5 sheet…");
                 const r = await printCardGrid(ids(), 5, 5);
-                if (r.url) window.open(r.url, "_blank");
-                setNote(r.error ?? (r.url ? "5×5 sheet ready." : ""));
+                if (r.url) {
+                  setPrintUrls([{ label: "5×5 card sheet", url: r.url }]);
+                  setNote("Ready — click below to open & print.");
+                } else setNote(r.error ?? "Could not build the sheet.");
               })
             }
             className="btn-secondary btn-sm"
