@@ -92,7 +92,17 @@ export async function updateMember(id: string, fd: FormData) {
   const class_id = schoolId
     ? await resolveClassId(schoolId, field(fd, "class_grade"), field(fd, "class_section"))
     : null;
-  const { error } = await supabase.from("members").update({ ...r.data, class_id }).eq("id", id);
+  // The member's photo is uploaded/removed by <PhotoField> through its own action
+  // and is NOT a field on this form. If we let the parsed schema (which fills the
+  // absent `photo_url` with null) into the update, every edit would silently WIPE
+  // the member's photo — and its generated card. Drop it so the edit only touches
+  // the fields the form actually owns.
+  const { photo_url: _managedSeparately, ...formFields } = r.data;
+  void _managedSeparately;
+  const { error } = await supabase
+    .from("members")
+    .update({ ...formFields, class_id })
+    .eq("id", id);
   if (error)
     redirect(`/members/${id}/edit?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/members");

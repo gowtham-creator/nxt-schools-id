@@ -10,6 +10,9 @@ type Props = {
   memberId?: string | null;
 };
 
+/** Max photo size (MB) — kept in sync with MAX_PHOTO_BYTES in photo-actions.ts. */
+const MAX_PHOTO_MB = 10;
+
 /**
  * Circular photo control for MemberForm. Holds the current photo URL in a
  * hidden <input name="photo_url"> (so the form still submits photo_url). Both
@@ -24,6 +27,12 @@ export function PhotoField({ initialUrl, memberId }: Props) {
 
   function upload(blob: Blob, filename: string) {
     setError("");
+    // Client-side guard mirrors the 10 MB server cap so oversized images fail
+    // fast with a clear message instead of after a long upload.
+    if (blob.size > MAX_PHOTO_MB * 1024 * 1024) {
+      setError(`Photo is too large — maximum size is ${MAX_PHOTO_MB} MB.`);
+      return;
+    }
     const fd = new FormData();
     fd.append("photo", blob, filename);
     if (memberId) fd.append("member_id", memberId);
@@ -90,6 +99,7 @@ export function PhotoField({ initialUrl, memberId }: Props) {
         )}
         <p className="max-w-[13rem] text-xs text-slate-400">
           Upload or use the camera, then drag &amp; zoom to crop to passport size (35×45).
+          JPG or PNG · up to {MAX_PHOTO_MB} MB.
         </p>
       </div>
 

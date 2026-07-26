@@ -96,10 +96,13 @@ export function MemberForm({
         <PhotoField initialUrl={member?.photo_url ?? null} memberId={member?.id ?? null} />
 
         <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="First name *" htmlFor="first_name">
+          <Field
+            label={type === "student" ? "Student Name *" : "Staff / Teacher Name *"}
+            htmlFor="first_name"
+          >
             <input id="first_name" name="first_name" required defaultValue={member?.first_name ?? ""} className={inputCls} />
           </Field>
-          <Field label="Last name" htmlFor="last_name">
+          <Field label="Surname" htmlFor="last_name">
             <input id="last_name" name="last_name" defaultValue={member?.last_name ?? ""} className={inputCls} />
           </Field>
           <Field label={type === "student" ? "Admission No" : "Employee ID"} htmlFor="identifier">

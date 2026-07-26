@@ -14,6 +14,11 @@ export const dynamic = "force-dynamic";
 // full-school batch needs the platform maximum, not the 60s default.
 export const maxDuration = 300;
 
+/** How many members are shown per page. The list is paginated (server-side)
+ *  so a school with hundreds/thousands of records loads fast and nothing is
+ *  hidden behind a hard cap. */
+const PAGE_SIZE = 100;
+
 /** Pipeline status tabs. `value: null` means "All" (no pipeline_status filter).
  *  `help` is the plain-language meaning shown as a tooltip + in the guide. */
 const PIPELINE_TABS: { label: string; value: PipelineStatus | null; help: string }[] = [
@@ -60,6 +65,8 @@ export default async function MembersPage({
     q?: string;
     type?: string;
     status?: string;
+    class?: string;
+    page?: string;
     ok?: string;
     error?: string;
   }>;
@@ -75,13 +82,29 @@ export default async function MembersPage({
     ? (sp.status as PipelineStatus)
     : null;
 
+  // Classes for the "Filter by class" dropdown (RLS-scoped to the caller's school).
+  const { data: classData } = await supabase
+    .from("classes")
+    .select("id,name,section")
+    .order("name", { ascending: true })
+    .order("section", { ascending: true });
+  const classes = (classData ?? []) as { id: string; name: string; section: string | null }[];
+  const activeClass = classes.some((c) => c.id === sp.class) ? (sp.class as string) : "";
+
+  // Server-side pagination: exact count + a windowed slice, so the whole school
+  // is reachable page by page (no 300-row cap that used to "hide" records).
+  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
   let query = supabase
     .from("members")
     .select(
       "id,member_type,identifier,first_name,last_name,photo_url,roll_no,status,pipeline_status,card_pdf_url,template_id,classes(name,section),id_templates(name)",
+      { count: "exact" },
     )
     .order("created_at", { ascending: false })
-    .limit(300);
+    .range(from, to);
 
   if (sp.q) {
     const q = sp.q.replace(/[%,]/g, "");
@@ -91,9 +114,14 @@ export default async function MembersPage({
   }
   if (sp.type === "student" || sp.type === "staff") query = query.eq("member_type", sp.type);
   if (activeStatus) query = query.eq("pipeline_status", activeStatus);
+  if (activeClass) query = query.eq("class_id", activeClass);
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   const rows = (data ?? []) as unknown as MemberRow[];
+  const total = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const firstShown = total === 0 ? 0 : from + 1;
+  const lastShown = Math.min(from + rows.length, total);
 
   // Templates for the bulk "Assign template" dropdown.
   const { data: templateData } = await supabase
@@ -102,15 +130,26 @@ export default async function MembersPage({
     .order("name", { ascending: true });
   const templates = (templateData ?? []) as { id: string; name: string }[];
 
-  // Build a tab href that preserves the current q/type filters.
-  const tabHref = (value: PipelineStatus | null): string => {
+  // Build hrefs that preserve the current filters. `withParams` overrides/removes
+  // individual params (null removes). Changing a filter resets to page 1.
+  const buildHref = (overrides: Record<string, string | null>): string => {
     const params = new URLSearchParams();
     if (sp.q) params.set("q", sp.q);
     if (sp.type) params.set("type", sp.type);
-    if (value) params.set("status", value);
+    if (activeStatus) params.set("status", activeStatus);
+    if (activeClass) params.set("class", activeClass);
+    if (page > 1) params.set("page", String(page));
+    for (const [k, v] of Object.entries(overrides)) {
+      if (v === null) params.delete(k);
+      else params.set(k, v);
+    }
     const qs = params.toString();
     return qs ? `/members?${qs}` : "/members";
   };
+  const tabHref = (value: PipelineStatus | null): string =>
+    buildHref({ status: value, page: null });
+  const classLabel = (c: { name: string; section: string | null }) =>
+    c.section ? `${c.name} — ${c.section}` : c.name;
 
   return (
     <div>
@@ -214,7 +253,7 @@ export default async function MembersPage({
         </p>
       </details>
 
-      {/* Search / filter */}
+      {/* Search / filter — by name/ID, type, and class (column filters). */}
       <form className="mt-3 flex flex-wrap gap-2">
         {activeStatus && <input type="hidden" name="status" value={activeStatus} />}
         <input
@@ -235,14 +274,59 @@ export default async function MembersPage({
           <option value="student">Students</option>
           <option value="staff">Staff</option>
         </select>
-        <button className="btn-secondary">
-          Filter
-        </button>
+        <select
+          id="class"
+          name="class"
+          defaultValue={activeClass}
+          className="field-input w-auto"
+        >
+          <option value="">All classes</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {classLabel(c)}
+            </option>
+          ))}
+        </select>
+        <button className="btn-secondary">Filter</button>
+        {(sp.q || sp.type || activeClass) && (
+          <Link href={buildHref({ q: null, type: null, class: null, page: null })} className="btn-secondary">
+            Clear
+          </Link>
+        )}
       </form>
 
       {/* Table (with bulk operations) */}
       <StudentTable rows={rows} templates={templates} />
-      <p className="mt-2 text-xs text-slate-400">{rows.length} shown (max 300).</p>
+
+      {/* Pagination */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-slate-500">
+          {total === 0
+            ? "No members match."
+            : `Showing ${firstShown}–${lastShown} of ${total.toLocaleString()}`}
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            {page > 1 ? (
+              <Link href={buildHref({ page: page - 1 <= 1 ? null : String(page - 1) })} className="btn-secondary btn-sm">
+                ← Prev
+              </Link>
+            ) : (
+              <span className="btn-secondary btn-sm cursor-not-allowed opacity-40">← Prev</span>
+            )}
+            <span className="px-2 text-sm text-slate-600">
+              Page {page} of {totalPages}
+            </span>
+            {page < totalPages ? (
+              <Link href={buildHref({ page: String(page + 1) })} className="btn-secondary btn-sm">
+                Next →
+              </Link>
+            ) : (
+              <span className="btn-secondary btn-sm cursor-not-allowed opacity-40">Next →</span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
