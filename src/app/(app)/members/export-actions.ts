@@ -67,18 +67,29 @@ export async function getMembersForExport(ids?: string[]): Promise<ExportRow[]> 
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  let query = supabase
-    .from("members")
-    .select(
-      "member_type,identifier,first_name,last_name,roll_no,designation,department,dob,gender,blood_group,guardian_name,guardian_phone,phone,email,address,status,pipeline_status,photo_url,classes(name,section),academic_years(name),branches(name)",
-    )
-    .order("created_at", { ascending: true })
-    .limit(20000);
-  if (ids && ids.length > 0) query = query.in("id", ids);
+  const SELECT =
+    "member_type,identifier,first_name,last_name,roll_no,designation,department,dob,gender,blood_group,guardian_name,guardian_phone,phone,email,address,status,pipeline_status,photo_url,classes(name,section),academic_years(name),branches(name)";
 
-  const { data, error } = await query;
-  if (error) return [];
-  const rows = (data ?? []) as unknown as Raw[];
+  // Page past PostgREST's ~1000-row response cap so a whole school exports (a
+  // single `.limit(20000)` would silently stop at 1000). Order by created_at
+  // then id (unique tiebreaker) so batch-imported rows sharing a timestamp still
+  // page cleanly with no gaps or duplicates.
+  const PAGE = 1000;
+  const rows: Raw[] = [];
+  for (let from = 0; ; from += PAGE) {
+    let query = supabase
+      .from("members")
+      .select(SELECT)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (ids && ids.length > 0) query = query.in("id", ids);
+    const { data, error } = await query;
+    if (error) break;
+    if (!data || data.length === 0) break;
+    rows.push(...(data as unknown as Raw[]));
+    if (data.length < PAGE) break;
+  }
 
   return rows.map((m) => ({
     member_type: s(m.member_type),

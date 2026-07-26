@@ -106,6 +106,35 @@ function toDay(iso: string | null): string | null {
   return new Date(t).toISOString().slice(0, 10);
 }
 
+/**
+ * Fetch EVERY row of a query, transparently paging past PostgREST's per-request
+ * row cap. Supabase returns at most ~1000 rows per request no matter how large a
+ * `.limit()` is — so a single `.select().limit(50000)` silently truncated the
+ * cross-school analytics to the first 1000 members and undercounted every KPI.
+ * `makeQuery` must return a FRESH, ordered query on each call so the `.range()`
+ * windows are stable and complete.
+ */
+async function fetchAllRows<T>(
+  makeQuery: () => {
+    range: (
+      from: number,
+      to: number,
+    ) => PromiseLike<{ data: T[] | null; error: unknown }>;
+  },
+): Promise<T[]> {
+  const PAGE = 1000;
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await makeQuery().range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    out.push(...data);
+    if (data.length < PAGE) break;
+    // Hard stop so a pathological loop can never run away.
+    if (from > 1_000_000) break;
+  }
+  return out;
+}
+
 /** The last `DAY_WINDOW` UTC dates, oldest → newest, as 'YYYY-MM-DD'. */
 function recentDays(count: number): string[] {
   const now = new Date();
@@ -130,12 +159,18 @@ export async function getDashboardAnalytics(
   supabase: SupabaseClient,
   schoolId: string | null,
 ): Promise<AnalyticsData> {
-  let membersQ = supabase
-    .from("members")
-    .select(
-      "member_type,pipeline_status,photo_url,branch_id,class_id,card_generated_at",
-    )
-    .limit(5000);
+  // Every member of the school, paged past the ~1000-row cap so a large school
+  // is counted in full (order by id = stable pagination).
+  const members = await fetchAllRows<MemberAggRow>(() => {
+    const q = supabase
+      .from("members")
+      .select(
+        "member_type,pipeline_status,photo_url,branch_id,class_id,card_generated_at",
+      )
+      .order("id", { ascending: true });
+    return schoolId ? q.eq("school_id", schoolId) : q;
+  });
+
   let branchesQ = supabase.from("branches").select("id,name");
   let classesQ = supabase.from("classes").select("id,name,section");
   // Scan-station activity (audit_log is RLS'd to admins — others just get 0/[]).
@@ -153,17 +188,14 @@ export async function getDashboardAnalytics(
     .gte("created_at", since24h);
 
   if (schoolId) {
-    membersQ = membersQ.eq("school_id", schoolId);
     branchesQ = branchesQ.eq("school_id", schoolId);
     classesQ = classesQ.eq("school_id", schoolId);
     scansQ = scansQ.eq("school_id", schoolId);
     scanCountQ = scanCountQ.eq("school_id", schoolId);
   }
 
-  const [membersRes, branchesRes, classesRes, scansRes, scanCountRes] =
-    await Promise.all([membersQ, branchesQ, classesQ, scansQ, scanCountQ]);
-
-  const members = (membersRes.data ?? []) as unknown as MemberAggRow[];
+  const [branchesRes, classesRes, scansRes, scanCountRes] =
+    await Promise.all([branchesQ, classesQ, scansQ, scanCountQ]);
   const branches = (branchesRes.data ?? []) as unknown as BranchRow[];
   const classes = (classesRes.data ?? []) as unknown as ClassNameRow[];
 
@@ -349,23 +381,28 @@ const TOP_SCHOOLS = 10;
 export async function getPlatformAnalytics(
   admin: SupabaseClient,
 ): Promise<PlatformAnalytics> {
-  const [schoolsRes, branchesRes, membersRes] = await Promise.all([
-    admin.from("schools").select("id,name"),
-    admin.from("branches").select("school_id"),
-    admin
-      .from("members")
-      .select("school_id,member_type,pipeline_status,card_generated_at")
-      .limit(50000),
-  ]);
-
-  const schools = (schoolsRes.data ?? []) as { id: string; name: string }[];
-  const branches = (branchesRes.data ?? []) as { school_id: string }[];
-  const members = (membersRes.data ?? []) as unknown as {
+  type PlatformMemberRow = {
     school_id: string;
     member_type: MemberType;
     pipeline_status: PipelineStatus;
     card_generated_at: string | null;
-  }[];
+  };
+  const [schoolsRes, branchesRes, members] = await Promise.all([
+    admin.from("schools").select("id,name"),
+    admin.from("branches").select("school_id"),
+    // Page through EVERY member across all schools — the previous single
+    // `.limit(50000)` only returned the first 1000 rows (PostgREST cap), which
+    // made the platform KPIs undercount badly. Order by id for stable paging.
+    fetchAllRows<PlatformMemberRow>(() =>
+      admin
+        .from("members")
+        .select("school_id,member_type,pipeline_status,card_generated_at")
+        .order("id", { ascending: true }),
+    ),
+  ]);
+
+  const schools = (schoolsRes.data ?? []) as { id: string; name: string }[];
+  const branches = (branchesRes.data ?? []) as { school_id: string }[];
 
   const schoolName = new Map(schools.map((s) => [s.id, s.name]));
 
