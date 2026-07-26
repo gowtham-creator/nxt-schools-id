@@ -357,12 +357,25 @@ export interface PlatformKpis {
   sentForPrinting: number;
 }
 
+/** One row of the per-school breakdown table (every school, exact counts). */
+export interface PlatformSchoolRow {
+  id: string;
+  name: string;
+  students: number;
+  staff: number;
+  total: number;
+  cardsGenerated: number;
+}
+
 export interface PlatformAnalytics {
   kpis: PlatformKpis;
   statusBreakdown: StatusSlice[];
   generatedByDay: DayCount[];
   studentsPerSchool: SchoolBar[];
   branchesPerSchool: SchoolBar[];
+  /** Every school with its student/staff/total/cards counts — these match what
+   *  each school sees on its own dashboard (same member_type counting). */
+  schools: PlatformSchoolRow[];
 }
 
 const PLATFORM_GENERATED_ONWARD: PipelineStatus[] = [
@@ -414,6 +427,20 @@ export async function getPlatformAnalytics(
   const studentsBySchool = new Map<string, number>();
   const statusCounts = new Map<PipelineStatus, number>();
   const dayCounts = new Map<string, number>();
+  // Per-school tallies (students / staff / total / generated) for the breakdown
+  // table — same member_type counting each school's own dashboard uses.
+  const perSchool = new Map<
+    string,
+    { students: number; staff: number; total: number; generated: number }
+  >();
+  const bump = (id: string) => {
+    let e = perSchool.get(id);
+    if (!e) {
+      e = { students: 0, staff: 0, total: 0, generated: 0 };
+      perSchool.set(id, e);
+    }
+    return e;
+  };
   let totalStudents = 0;
   let totalStaff = 0;
   let cardsGenerated = 0;
@@ -422,21 +449,43 @@ export async function getPlatformAnalytics(
   let sentForPrinting = 0;
 
   for (const m of members) {
+    const e = bump(m.school_id);
+    e.total++;
     if (m.member_type === "student") {
       totalStudents++;
+      e.students++;
       studentsBySchool.set(m.school_id, (studentsBySchool.get(m.school_id) ?? 0) + 1);
     } else if (m.member_type === "staff") {
       totalStaff++;
+      e.staff++;
     }
     statusCounts.set(m.pipeline_status, (statusCounts.get(m.pipeline_status) ?? 0) + 1);
     if (m.pipeline_status === "not_generated") cardsNotGenerated++;
-    if (PLATFORM_GENERATED_ONWARD.includes(m.pipeline_status)) cardsGenerated++;
+    if (PLATFORM_GENERATED_ONWARD.includes(m.pipeline_status)) {
+      cardsGenerated++;
+      e.generated++;
+    }
     if (m.pipeline_status === "sent_for_printing") sentForPrinting++;
     if (m.pipeline_status === "printed") cardsPrinted++;
 
     const day = toDay(m.card_generated_at);
     if (day) dayCounts.set(day, (dayCounts.get(day) ?? 0) + 1);
   }
+
+  // Every school (even with 0 members), sorted by total members desc.
+  const schoolsTable: PlatformSchoolRow[] = schools
+    .map((s) => {
+      const e = perSchool.get(s.id) ?? { students: 0, staff: 0, total: 0, generated: 0 };
+      return {
+        id: s.id,
+        name: s.name,
+        students: e.students,
+        staff: e.staff,
+        total: e.total,
+        cardsGenerated: e.generated,
+      };
+    })
+    .sort((a, b) => b.total - a.total);
 
   const statusBreakdown: StatusSlice[] = STATUS_ORDER.map((s) => ({
     status: s.status,
@@ -472,5 +521,6 @@ export async function getPlatformAnalytics(
     generatedByDay,
     studentsPerSchool,
     branchesPerSchool,
+    schools: schoolsTable,
   };
 }

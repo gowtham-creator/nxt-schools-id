@@ -136,6 +136,51 @@ export default function PlatformDashboard({ data }: { data: PlatformAnalytics })
           />
         </motion.div>
       </div>
+
+      {/* Per-school breakdown — exact live counts for every school. These match
+          what each school's own admin sees on their dashboard. */}
+      <motion.div variants={item} className="card mt-4 overflow-hidden p-0">
+        <div className="flex items-center justify-between px-5 py-4">
+          <div>
+            <h3 className="text-sm font-medium text-slate-700">Per-school breakdown</h3>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Live student &amp; staff counts — same numbers each school sees on its own dashboard.
+            </p>
+          </div>
+          <span className="shrink-0 text-xs text-slate-400">{data.schools.length} schools</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead className="bg-slate-50 text-left text-slate-500">
+              <tr>
+                <th className="px-5 py-2.5 font-medium">School</th>
+                <th className="px-3 py-2.5 text-right font-medium">Students</th>
+                <th className="px-3 py-2.5 text-right font-medium">Staff</th>
+                <th className="px-3 py-2.5 text-right font-medium">Total</th>
+                <th className="px-5 py-2.5 text-right font-medium">IDs generated</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.schools.map((s) => (
+                <tr key={s.id} className="hover:bg-slate-50">
+                  <td className="px-5 py-2.5 font-medium text-slate-800">{s.name}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{NUM.format(s.students)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{NUM.format(s.staff)}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-slate-900">{NUM.format(s.total)}</td>
+                  <td className="px-5 py-2.5 text-right tabular-nums text-emerald-600">{NUM.format(s.cardsGenerated)}</td>
+                </tr>
+              ))}
+              {data.schools.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-slate-400">
+                    No schools yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
