@@ -199,7 +199,7 @@ export default function DashboardView({
 
   return (
     <motion.div variants={container} initial="hidden" animate="show">
-      <AutoRefresh seconds={15} />
+      <AutoRefresh seconds={10} />
 
       {/* Usage-based trial countdown (only for trial schools). */}
       {trial && !trial.expired && (

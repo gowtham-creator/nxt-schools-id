@@ -64,7 +64,7 @@ export default function PlatformDashboard({ data }: { data: PlatformAnalytics })
 
   return (
     <motion.div variants={container} initial="hidden" animate="show">
-      <AutoRefresh seconds={12} />
+      <AutoRefresh seconds={10} />
 
       <motion.div variants={item}>
         <h1 className="text-2xl font-semibold text-slate-900">Platform analytics</h1>

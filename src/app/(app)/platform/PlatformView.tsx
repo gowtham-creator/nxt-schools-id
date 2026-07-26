@@ -120,7 +120,7 @@ export default function PlatformView({
 
   return (
     <div>
-      <AutoRefresh seconds={15} />
+      <AutoRefresh seconds={10} />
 
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
