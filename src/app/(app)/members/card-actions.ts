@@ -259,13 +259,22 @@ export async function bulkGenerate(ids: string[]): Promise<{ ok: number; failed:
 export async function allMemberIds(): Promise<string[]> {
   const { supabase, schoolId } = await ctx();
   if (!schoolId) return [];
-  const { data } = await supabase
-    .from("members")
-    .select("id")
-    .eq("school_id", schoolId)
-    .order("created_at", { ascending: false })
-    .limit(10000);
-  return (data ?? []).map((r) => (r as { id: string }).id);
+  // Page through every id — a single request is capped at ~1000 rows by
+  // PostgREST, which would silently skip a large school's members past 1000
+  // (so "Regenerate/Print all" would miss them). Order by id for stable paging.
+  const ids: string[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("members")
+      .select("id")
+      .eq("school_id", schoolId)
+      .order("id", { ascending: true })
+      .range(from, from + 999);
+    if (error || !data || data.length === 0) break;
+    for (const r of data) ids.push((r as { id: string }).id);
+    if (data.length < 1000) break;
+  }
+  return ids;
 }
 
 /** Assigns one template to many members (scoped to the caller's school). */

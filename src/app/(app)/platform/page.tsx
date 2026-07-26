@@ -51,17 +51,13 @@ export default async function PlatformPage({
 
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [schoolsRes, membersRes, usersRes, auditRes, authRes] = await Promise.all([
+  const [schoolsRes, usersRes, auditRes, authRes] = await Promise.all([
     admin
       .from("schools")
       .select(
         "id, name, short_name, logo_url, phone, created_at, student_template_id, staff_template_id",
       )
       .order("created_at", { ascending: true }),
-    admin
-      .from("members")
-      .select("school_id, member_type, pipeline_status, photo_url")
-      .limit(20000),
     admin.from("app_users").select("id, school_id, role"),
     admin
       .from("audit_log")
@@ -71,8 +67,22 @@ export default async function PlatformPage({
     admin.auth.admin.listUsers({ perPage: 1000 }),
   ]);
 
+  // Page through EVERY member. A single PostgREST request returns at most ~1000
+  // rows regardless of `.limit()`, which previously truncated every per-school
+  // student/staff count on this page to the first 1000 members platform-wide.
+  const members: MemberRow[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin
+      .from("members")
+      .select("school_id, member_type, pipeline_status, photo_url")
+      .order("id", { ascending: true })
+      .range(from, from + 999);
+    if (error || !data || data.length === 0) break;
+    members.push(...(data as MemberRow[]));
+    if (data.length < 1000) break;
+  }
+
   const schools = (schoolsRes.data ?? []) as SchoolRow[];
-  const members = (membersRes.data ?? []) as MemberRow[];
   const appUsers = (usersRes.data ?? []) as {
     id: string;
     school_id: string | null;
