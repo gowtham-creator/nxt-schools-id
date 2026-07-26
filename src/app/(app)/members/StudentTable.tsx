@@ -507,7 +507,16 @@ export default function StudentTable({
                     <Link href={`/members/${m.id}/edit`} className="text-slate-600 hover:text-slate-900">
                       Edit
                     </Link>
-                    <form action={deleteMember.bind(null, m.id)} className="inline">
+                    <form
+                      action={deleteMember.bind(null, m.id)}
+                      className="inline"
+                      onSubmit={(e) => {
+                        // Guard against accidental deletion — the action is irreversible.
+                        const who = [m.first_name, m.last_name].filter(Boolean).join(" ") || "this member";
+                        if (!window.confirm(`Delete ${who}? This permanently removes the record and cannot be undone.`))
+                          e.preventDefault();
+                      }}
+                    >
                       <button className="cursor-pointer text-red-600 hover:text-red-700">Delete</button>
                     </form>
                   </td>
