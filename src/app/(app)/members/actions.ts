@@ -29,9 +29,20 @@ async function resolveClassId(
   const sec = section.trim() || null;
   const admin = createAdminClient();
 
-  const base = admin.from("classes").select("id").eq("school_id", schoolId).eq("name", name);
-  const { data: found } = await (sec ? base.eq("section", sec) : base.is("section", null)).maybeSingle();
-  if (found) return found.id as string;
+  // Match case-insensitively and take the FIRST existing row (limit 1, never
+  // maybeSingle). The old exact-match + maybeSingle created a runaway: "Nursery"
+  // vs "NURSERY" were treated as different, and once two duplicates existed
+  // maybeSingle errored so every new member spawned yet another duplicate class.
+  let base = admin
+    .from("classes")
+    .select("id")
+    .eq("school_id", schoolId)
+    .ilike("name", name)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  base = sec ? base.ilike("section", sec) : base.is("section", null);
+  const { data: found } = await base;
+  if (found && found.length > 0) return found[0].id as string;
 
   const { data: created } = await admin
     .from("classes")
@@ -62,6 +73,10 @@ export async function createMember(fd: FormData) {
   if (!r.success)
     redirect(`/members/new?error=${encodeURIComponent(r.error.issues[0].message)}`);
   const class_id = await resolveClassId(schoolId, field(fd, "class_grade"), field(fd, "class_section"));
+  // Class is mandatory for students (the team filters by it) — enforce server-side
+  // too, since the form's `required` can be bypassed.
+  if (r.data.member_type === "student" && !class_id)
+    redirect(`/members/new?error=${encodeURIComponent("Class is required for students.")}`);
   const { error } = await supabase
     .from("members")
     .insert({ ...r.data, class_id, school_id: schoolId });
@@ -92,6 +107,8 @@ export async function updateMember(id: string, fd: FormData) {
   const class_id = schoolId
     ? await resolveClassId(schoolId, field(fd, "class_grade"), field(fd, "class_section"))
     : null;
+  if (r.data.member_type === "student" && !class_id)
+    redirect(`/members/${id}/edit?error=${encodeURIComponent("Class is required for students.")}`);
   // The member's photo is uploaded/removed by <PhotoField> through its own action
   // and is NOT a field on this form. If we let the parsed schema (which fills the
   // absent `photo_url` with null) into the update, every edit would silently WIPE

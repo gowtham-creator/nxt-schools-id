@@ -118,20 +118,35 @@ export function PhotoCapture({
     setCroppedArea(null);
   }, []);
 
-  /** Open a camera stream on the given side. `ideal` is a soft constraint so a
-   *  device with only one camera still opens instead of failing. */
-  const getStream = useCallback((mode: "environment" | "user") => {
+  /** Open a camera stream on the given side. Tries `exact` first so a phone
+   *  actually opens the requested (usually BACK) camera instead of whatever the
+   *  browser defaults to with the soft `ideal` hint — that inconsistency was why
+   *  it sometimes opened the front camera. Falls back to `ideal` (then no
+   *  constraint) so a single-camera device — e.g. a laptop with no back camera —
+   *  still opens instead of failing. */
+  const getStream = useCallback(async (mode: "environment" | "user") => {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("Webcam capture is not supported in this browser.");
     }
-    return navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: mode },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-      audio: false,
-    });
+    const size = { width: { ideal: 1280 }, height: { ideal: 720 } };
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { ...size, facingMode: { exact: mode } },
+        audio: false,
+      });
+    } catch (err) {
+      // The device has no camera on that side (or won't honour `exact`).
+      const name = err instanceof Error ? err.name : "";
+      if (name === "NotAllowedError" || name === "NotReadableError") throw err;
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: { ...size, facingMode: { ideal: mode } },
+          audio: false,
+        });
+      } catch {
+        return await navigator.mediaDevices.getUserMedia({ video: size, audio: false });
+      }
+    }
   }, []);
 
   const startCamera = useCallback(async () => {
@@ -152,9 +167,13 @@ export function PhotoCapture({
   const switchCamera = useCallback(async () => {
     const next = facing === "environment" ? "user" : "environment";
     setError("");
+    // Release the current camera FIRST — many phones allow only one active
+    // stream, so acquiring the new one before stopping the old throws
+    // "camera in use" and the flip appears to do nothing.
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
     try {
       const stream = await getStream(next);
-      streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = stream;
       setFacing(next);
       const video = videoRef.current;

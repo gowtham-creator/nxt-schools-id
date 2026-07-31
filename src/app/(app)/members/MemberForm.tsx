@@ -134,8 +134,8 @@ export function MemberForm({
         )}
         {type === "student" ? (
           <>
-            <Field label="Class / Grade" htmlFor="class_grade">
-              <select id="class_grade" name="class_grade" defaultValue={defaultGrade} className={inputCls}>
+            <Field label="Class / Grade *" htmlFor="class_grade">
+              <select id="class_grade" name="class_grade" required defaultValue={defaultGrade} className={inputCls}>
                 <option value="">— Select grade —</option>
                 {gradeNames.map((name) => (
                   <option key={name} value={name}>
