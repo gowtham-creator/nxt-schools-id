@@ -59,6 +59,18 @@ export const BLOOD_GROUPS = [
 export const SECTIONS = ["A", "B", "C", "D", "E", "F", "G", "H"] as const;
 
 /**
+ * Grades kept section-less everywhere. Schools filter these pre-primary grades
+ * by grade alone (just "Nursery" / "UKG"), never "Nursery A" / "UKG B", so any
+ * section chosen/imported for them is ignored. Compare against a grade's
+ * lower-cased, trimmed name.
+ */
+export const SECTIONLESS_GRADES = new Set<string>(["nursery", "ukg"]);
+
+/** True when the grade name is one that must stay section-less. */
+export const isSectionlessGrade = (name: string): boolean =>
+  SECTIONLESS_GRADES.has(name.trim().toLowerCase());
+
+/**
  * The standard school grade ladder (India), in display order. Seeded as
  * `classes` for every school so the Class dropdown is populated on day one.
  */

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { memberSchema, classSchema, formToObject } from "@/lib/validators";
+import { isSectionlessGrade } from "@/lib/constants";
 
 /** Read a string field from FormData (non-strings / missing -> ""). */
 function field(fd: FormData, key: string): string {
@@ -26,7 +27,9 @@ async function resolveClassId(
 ): Promise<string | null> {
   const name = grade.trim();
   if (!name) return null;
-  const sec = section.trim() || null;
+  // Nursery / UKG are deliberately section-less — ignore any section chosen for
+  // them so "Nursery A" / "UKG B" can never be created again.
+  const sec = isSectionlessGrade(name) ? null : section.trim() || null;
   const admin = createAdminClient();
 
   // Match case-insensitively and take the FIRST existing row (limit 1, never

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BLOOD_GROUPS, GENDERS, SECTIONS, STANDARD_GRADES, gradeRank } from "@/lib/constants";
+import { BLOOD_GROUPS, GENDERS, SECTIONS, STANDARD_GRADES, gradeRank, isSectionlessGrade } from "@/lib/constants";
 import type { ClassRow, Member } from "@/lib/types";
 import { PhotoField } from "./PhotoField";
 
@@ -66,6 +66,9 @@ export function MemberForm({
     : undefined;
   const defaultGrade = currentClass?.name ?? "";
   const defaultSection = currentClass?.section ?? "";
+  // Watch the grade so the Section picker can hide for section-less grades
+  // (Nursery / UKG), which are filtered by grade alone.
+  const [grade, setGrade] = useState<string>(defaultGrade);
 
   // Batch defaults to the member's saved year, else the school's current year.
   const currentYear = academicYears.find((y) => y.is_current);
@@ -135,7 +138,14 @@ export function MemberForm({
         {type === "student" ? (
           <>
             <Field label="Class / Grade *" htmlFor="class_grade">
-              <select id="class_grade" name="class_grade" required defaultValue={defaultGrade} className={inputCls}>
+              <select
+                id="class_grade"
+                name="class_grade"
+                required
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                className={inputCls}
+              >
                 <option value="">— Select grade —</option>
                 {gradeNames.map((name) => (
                   <option key={name} value={name}>
@@ -144,16 +154,19 @@ export function MemberForm({
                 ))}
               </select>
             </Field>
-            <Field label="Section (optional)" htmlFor="class_section">
-              <select id="class_section" name="class_section" defaultValue={defaultSection} className={inputCls}>
-                <option value="">— none —</option>
-                {SECTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            {/* Nursery / UKG are section-less — hide the picker so no A/B is set. */}
+            {!isSectionlessGrade(grade) && (
+              <Field label="Section (optional)" htmlFor="class_section">
+                <select id="class_section" name="class_section" defaultValue={defaultSection} className={inputCls}>
+                  <option value="">— none —</option>
+                  {SECTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <Field label="Roll No" htmlFor="roll_no">
               <input id="roll_no" name="roll_no" defaultValue={member?.roll_no ?? ""} className={inputCls} />
             </Field>

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { memberSchema } from "@/lib/validators";
+import { isSectionlessGrade } from "@/lib/constants";
 
 type ImportRow = Record<string, string>;
 
@@ -39,14 +40,15 @@ export async function importMembers(
     .eq("school_id", schoolId);
   for (const c of existing ?? [])
     classMap.set(classKey(c.name ?? "", c.section ?? ""), c.id);
+  // Nursery / UKG stay section-less on import too — drop any imported section.
+  const effSection = (name: string, section: string) =>
+    isSectionlessGrade(name) ? "" : section.trim();
   const wanted = new Map<string, { name: string; section: string }>();
   for (const r of rows) {
     const name = (r.class ?? "").trim();
     if (!name) continue;
-    wanted.set(classKey(name, (r.section ?? "").trim()), {
-      name,
-      section: (r.section ?? "").trim(),
-    });
+    const sec = effSection(name, r.section ?? "");
+    wanted.set(classKey(name, sec), { name, section: sec });
   }
   for (const { name, section } of wanted.values()) {
     const key = classKey(name, section);
@@ -101,7 +103,7 @@ export async function importMembers(
       identifier: r.identifier ?? "",
       first_name: r.first_name ?? "",
       last_name: r.last_name ?? "",
-      class_id: className ? (classMap.get(classKey(className, (r.section ?? "").trim())) ?? "") : "",
+      class_id: className ? (classMap.get(classKey(className, effSection(className, r.section ?? ""))) ?? "") : "",
       academic_year_id: yearName ? (yearMap.get(yearName.toLowerCase()) ?? "") : "",
       roll_no: r.roll_no ?? "",
       dob: r.dob ?? "",
