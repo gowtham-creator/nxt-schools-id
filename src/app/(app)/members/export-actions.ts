@@ -80,6 +80,7 @@ export async function getMembersForExport(ids?: string[]): Promise<ExportRow[]> 
     let query = supabase
       .from("members")
       .select(SELECT)
+      .eq("member_type", "student")
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
       .range(from, from + PAGE - 1);

@@ -6,30 +6,73 @@ import { Download, FileSpreadsheet, Images } from "lucide-react";
 import { getMembersForExport, type ExportRow } from "./export-actions";
 import { makeZip, type ZipFile } from "./zip";
 
-/** Column order + human headers for the exported spreadsheet. */
-const COLUMNS: [keyof ExportRow, string][] = [
-  ["member_type", "Type"],
-  ["identifier", "Admission/Employee No"],
-  ["first_name", "First name"],
-  ["last_name", "Last name"],
-  ["class", "Class"],
-  ["section", "Section"],
-  ["academic_year", "Academic year"],
-  ["branch", "Branch"],
-  ["roll_no", "Roll no"],
-  ["designation", "Designation"],
-  ["department", "Department"],
-  ["dob", "Date of birth"],
-  ["gender", "Gender"],
-  ["blood_group", "Blood group"],
-  ["guardian_name", "Guardian"],
-  ["guardian_phone", "Guardian phone"],
-  ["phone", "Phone"],
-  ["email", "Email"],
-  ["address", "Address"],
-  ["status", "Status"],
-  ["id_status", "ID status"],
-  ["photo_url", "Photo file"],
+// ── Value formatters, matching the ERP import template's expected formats ──
+const fullName = (r: ExportRow) => [r.first_name, r.last_name].filter(Boolean).join(" ").trim();
+/** App stores dates as YYYY-MM-DD; the ERP template wants DD-MM-YYYY. */
+const toDDMMYYYY = (iso: string): string => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : iso || "";
+};
+/** Normalise gender to the ERP's "Male" / "Female" (pass anything else through). */
+const normGender = (g: string): string => {
+  const t = (g || "").trim().toLowerCase();
+  if (t.startsWith("m")) return "Male";
+  if (t.startsWith("f")) return "Female";
+  return g || "";
+};
+/** Student contact = guardian's phone, falling back to the student's own. */
+const contactNo = (r: ExportRow) => r.guardian_phone || r.phone || "";
+/** Normalise academic year to the ERP's full "YYYY-YYYY" (e.g. 2026-27 → 2026-2027). */
+const normYear = (y: string): string => {
+  const m = /^(\d{4})\s*-\s*(\d{2}|\d{4})$/.exec((y || "").trim());
+  if (!m) return y || "";
+  const end = m[2].length === 2 ? m[1].slice(0, 2) + m[2] : m[2];
+  return `${m[1]}-${end}`;
+};
+
+/**
+ * Columns EXACTLY match the ERP "student_import_template.xlsx" — same headers,
+ * same order, same formats — so a school can feed this export straight into the
+ * ERP with no rework. Fields the ID-card app doesn't hold are left blank (never
+ * fabricated). Each column pulls its value live from the member record.
+ */
+const COLUMNS: { header: string; get: (r: ExportRow, i: number) => string }[] = [
+  { header: "Sl No", get: (_r, i) => String(i + 1) },
+  { header: "Admission Number *", get: (r) => r.identifier },
+  { header: "Student Name *", get: (r) => fullName(r) },
+  { header: "Date of Birth * (DD-MM-YYYY)", get: (r) => toDDMMYYYY(r.dob) },
+  { header: "Gender * (Male/Female)", get: (r) => normGender(r.gender) },
+  { header: "Class *", get: (r) => r.class },
+  { header: "Section *", get: (r) => r.section },
+  { header: "Academic Year *", get: (r) => normYear(r.academic_year) },
+  { header: "Admission Date (DD-MM-YYYY)", get: () => "" },
+  { header: "Father Name", get: (r) => r.guardian_name },
+  { header: "Mother Name", get: () => "" },
+  { header: "Current Address", get: (r) => r.address },
+  { header: "Permanent Address", get: () => "" },
+  { header: "Contact Number *", get: (r) => contactNo(r) },
+  { header: "Roll Number", get: (r) => r.roll_no },
+  { header: "Email", get: (r) => r.email },
+  { header: "Category", get: () => "" },
+  { header: "Religion", get: () => "" },
+  { header: "Caste", get: () => "" },
+  { header: "Blood Group (e.g. O+)", get: (r) => r.blood_group },
+  { header: "Student House", get: () => "" },
+  { header: "Height", get: () => "" },
+  { header: "Weight", get: () => "" },
+  { header: "UID (Aadhar No)", get: () => "" },
+  { header: "PEN Number", get: () => "" },
+  { header: "Mother Tongue", get: () => "" },
+  { header: "Identification Marks", get: () => "" },
+  { header: "Previous School", get: () => "" },
+  { header: "Old Admission Number", get: () => "" },
+  { header: "Father Education Qualification", get: () => "" },
+  { header: "Mother Education Qualification", get: () => "" },
+  { header: "Father Aadhaar Number", get: () => "" },
+  { header: "Mother Aadhaar Number", get: () => "" },
+  { header: "Father Occupation", get: () => "" },
+  { header: "Mother Occupation", get: () => "" },
+  { header: "Bus Transport Required (Yes/No)", get: () => "" },
 ];
 
 function sanitize(s: string): string {
@@ -57,19 +100,16 @@ function download(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Build the members spreadsheet; `photoFilenames` maps row→its photo file in the zip. */
-function buildWorkbook(rows: ExportRow[], photoFilenames?: Map<ExportRow, string>): Uint8Array {
+/** Build the ERP-format "Students" spreadsheet (one row per student). */
+function buildWorkbook(rows: ExportRow[]): Uint8Array {
   const aoa = [
-    COLUMNS.map(([, label]) => label),
-    ...rows.map((r) =>
-      COLUMNS.map(([key]) =>
-        key === "photo_url" ? (photoFilenames?.get(r) ?? (r.photo_url ? "yes" : "")) : r[key],
-      ),
-    ),
+    COLUMNS.map((c) => c.header),
+    ...rows.map((r, i) => COLUMNS.map((c) => c.get(r, i))),
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Members");
+  // Sheet name must be "Students" — the ERP import looks for that sheet.
+  XLSX.utils.book_append_sheet(wb, ws, "Students");
   // XLSX.write with type:"array" returns an ArrayBuffer — wrap it so the zip
   // builder (and Blob) get a real Uint8Array with a valid .length.
   return new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer);
@@ -102,7 +142,7 @@ export default function ExportButton({
         setNote("No members to export.");
         return;
       }
-      download(new Blob([buildWorkbook(rows)] as BlobPart[]), `members-${stamp}.xlsx`);
+      download(new Blob([buildWorkbook(rows)] as BlobPart[]), `students-${stamp}.xlsx`);
     } catch {
       setNote("Export failed.");
     } finally {
@@ -121,7 +161,6 @@ export default function ExportButton({
         return;
       }
       const used = new Set<string>();
-      const photoFilenames = new Map<ExportRow, string>();
       const files: ZipFile[] = [];
       const withPhotos = rows.filter((r) => r.photo_url);
       let done = 0;
@@ -143,7 +182,6 @@ export default function ExportButton({
             if (resp.ok) {
               const bytes = new Uint8Array(await resp.arrayBuffer());
               const name = photoName(r, used);
-              photoFilenames.set(r, name);
               files.push({ name: `photos/${name}`, data: bytes });
               ok++;
             }
@@ -159,9 +197,9 @@ export default function ExportButton({
       await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
       setProgress("Building file…");
-      files.unshift({ name: `members-${stamp}.xlsx`, data: buildWorkbook(rows, photoFilenames) });
-      download(makeZip(files), `members-${stamp}.zip`);
-      setNote(`Exported ${rows.length} members${ok ? ` + ${ok} photos` : ""}.`);
+      files.unshift({ name: `students-${stamp}.xlsx`, data: buildWorkbook(rows) });
+      download(makeZip(files), `students-${stamp}.zip`);
+      setNote(`Exported ${rows.length} students${ok ? ` + ${ok} photos` : ""}.`);
     } catch {
       setNote("Export failed.");
     } finally {
