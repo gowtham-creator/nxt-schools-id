@@ -6,13 +6,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { memberSchema } from "@/lib/validators";
-import { isSectionlessGrade } from "@/lib/constants";
+import { isSectionlessGrade, canonicalGrade } from "@/lib/constants";
 
 type ImportRow = Record<string, string>;
 
 export async function importMembers(
   rows: ImportRow[],
-): Promise<{ inserted: number; failed: number; errors: string[] }> {
+): Promise<{ inserted: number; updated: number; failed: number; errors: string[] }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -24,8 +24,8 @@ export async function importMembers(
     .eq("id", user.id)
     .single();
   const schoolId = (profile?.school_id ?? null) as string | null;
-  if (!schoolId) return { inserted: 0, failed: rows.length, errors: ["No school assigned to your account"] };
-  if (!rows.length) return { inserted: 0, failed: 0, errors: ["No rows to import"] };
+  if (!schoolId) return { inserted: 0, updated: 0, failed: rows.length, errors: ["No school assigned to your account"] };
+  if (!rows.length) return { inserted: 0, updated: 0, failed: 0, errors: ["No rows to import"] };
 
   // Resolve (class, section) -> class id (find or create), scoped to the school.
   // Uses the service role so classes can be created regardless of the caller's
@@ -45,7 +45,7 @@ export async function importMembers(
     isSectionlessGrade(name) ? "" : section.trim();
   const wanted = new Map<string, { name: string; section: string }>();
   for (const r of rows) {
-    const name = (r.class ?? "").trim();
+    const name = canonicalGrade(r.class ?? "");
     if (!name) continue;
     const sec = effSection(name, r.section ?? "");
     wanted.set(classKey(name, sec), { name, section: sec });
@@ -96,7 +96,7 @@ export async function importMembers(
   const errors: string[] = [];
   const records: Record<string, unknown>[] = [];
   rows.forEach((r, i) => {
-    const className = (r.class ?? "").trim();
+    const className = canonicalGrade(r.class ?? "");
     const yearName = (r.academic_year ?? "").trim();
     const candidate = {
       member_type: STAFF_WORDS.has((r.member_type ?? "").trim().toLowerCase()) ? "staff" : "student",
@@ -122,15 +122,84 @@ export async function importMembers(
     else records.push({ ...parsed.data, school_id: schoolId });
   });
 
+  // ── Upsert: match each parsed row to an existing member so RE-IMPORTING
+  //    corrected data UPDATES that student instead of creating a duplicate copy.
+  //    Match by admission number when present, else by full name + date of birth.
+  const normName = (fn: unknown, ln: unknown) =>
+    `${String(fn ?? "").trim().toLowerCase().replace(/\s+/g, " ")} ${String(ln ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ")}`.trim();
+
+  const byId = new Map<string, string>();
+  const byNameDob = new Map<string, string>();
+  for (let from = 0; ; from += 1000) {
+    const { data } = await admin
+      .from("members")
+      .select("id,identifier,first_name,last_name,dob")
+      .eq("school_id", schoolId)
+      .order("id", { ascending: true })
+      .range(from, from + 999);
+    if (!data || data.length === 0) break;
+    for (const raw of data) {
+      const m = raw as {
+        id: string;
+        identifier: string | null;
+        first_name: string;
+        last_name: string | null;
+        dob: string | null;
+      };
+      const ident = (m.identifier ?? "").trim().toLowerCase();
+      if (ident) byId.set(ident, m.id);
+      if (m.dob) byNameDob.set(`${normName(m.first_name, m.last_name)}|${m.dob}`, m.id);
+    }
+    if (data.length < 1000) break;
+  }
+
+  const matchId = (rec: Record<string, unknown>): string | undefined => {
+    const ident = String(rec.identifier ?? "").trim().toLowerCase();
+    if (ident && byId.has(ident)) return byId.get(ident);
+    const dob = rec.dob ? String(rec.dob) : "";
+    return dob ? byNameDob.get(`${normName(rec.first_name, rec.last_name)}|${dob}`) : undefined;
+  };
+
+  const toInsert: Record<string, unknown>[] = [];
+  const toUpdate: { id: string; patch: Record<string, unknown> }[] = [];
+  for (const rec of records) {
+    const id = matchId(rec);
+    if (!id) {
+      toInsert.push(rec);
+      continue;
+    }
+    // Merge: apply the row's non-empty values (new data wins), but never blank a
+    // field the row omits, and never touch the photo (managed separately).
+    const patch: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(rec)) {
+      if (k === "photo_url" || k === "school_id") continue;
+      if (v !== null && v !== undefined && v !== "") patch[k] = v;
+    }
+    toUpdate.push({ id, patch });
+  }
+
   let inserted = 0;
-  for (let i = 0; i < records.length; i += 200) {
-    const chunk = records.slice(i, i + 200);
+  let updated = 0;
+  for (let i = 0; i < toInsert.length; i += 200) {
+    const chunk = toInsert.slice(i, i + 200);
     const { error } = await supabase.from("members").insert(chunk);
     if (error) errors.push(`Batch ${Math.floor(i / 200) + 1}: ${error.message}`);
     else inserted += chunk.length;
   }
+  for (const u of toUpdate) {
+    const { error } = await supabase
+      .from("members")
+      .update(u.patch)
+      .eq("id", u.id)
+      .eq("school_id", schoolId);
+    if (error) errors.push(`Update ${u.id.slice(0, 8)}: ${error.message}`);
+    else updated += 1;
+  }
 
-  const failed = rows.length - inserted;
+  const failed = rows.length - inserted - updated;
   // Record the import so it shows in Recent activity / Audit log with a
   // success/failed status, and feeds the dashboard "Data imported" tile.
   await logAudit(admin, {
@@ -138,10 +207,10 @@ export async function importMembers(
     actorId: user.id,
     action: "members.imported",
     targetType: "members",
-    meta: { total: rows.length, imported: inserted, failed, status: failed === 0 ? "success" : "partial" },
+    meta: { total: rows.length, imported: inserted, updated, failed, status: failed === 0 ? "success" : "partial" },
   });
 
   revalidatePath("/members");
   revalidatePath("/dashboard");
-  return { inserted, failed, errors: errors.slice(0, 25) };
+  return { inserted, updated, failed, errors: errors.slice(0, 25) };
 }

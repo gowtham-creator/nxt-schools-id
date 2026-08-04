@@ -87,7 +87,7 @@ function mapRows(json: Record<string, unknown>[]): Row[] {
 export function ImportClient() {
   const [rows, setRows] = useState<Row[]>([]);
   const [fileName, setFileName] = useState("");
-  const [result, setResult] = useState<{ inserted: number; failed: number; errors: string[] } | null>(null);
+  const [result, setResult] = useState<{ inserted: number; updated: number; failed: number; errors: string[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -204,15 +204,24 @@ export function ImportClient() {
       {result && (
         <div className="card p-5">
           <p className="text-sm">
-            <span className="font-semibold text-emerald-700">{result.inserted} imported</span>
+            <span className="font-semibold text-emerald-700">{result.inserted} added</span>
+            {result.updated > 0 && (
+              <span className="ml-2 font-semibold text-teal-700">{result.updated} updated</span>
+            )}
             {result.failed > 0 && <span className="ml-2 text-red-600">{result.failed} failed</span>}
           </p>
+          {result.updated > 0 && (
+            <p className="mt-1 text-xs text-slate-500">
+              Existing students (matched by admission number, or name + date of birth) were
+              updated with the new data instead of duplicated.
+            </p>
+          )}
           {result.errors.length > 0 && (
             <ul className="mt-2 max-h-48 list-disc overflow-auto pl-5 text-xs text-red-600">
               {result.errors.map((e, i) => <li key={i}>{e}</li>)}
             </ul>
           )}
-          {result.inserted > 0 && (
+          {(result.inserted > 0 || result.updated > 0) && (
             <a href="/members" className="btn-primary mt-3">
               View members
             </a>

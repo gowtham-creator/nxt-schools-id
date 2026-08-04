@@ -71,6 +71,20 @@ export const isSectionlessGrade = (name: string): boolean =>
   SECTIONLESS_GRADES.has(name.trim().toLowerCase());
 
 /**
+ * Map common dotted / abbreviated / typo variants of the pre-primary grades to
+ * their standard name ("U.K.G." → "UKG", "L.K.G" → "LKG", "Nur." / "Nursary" →
+ * "Nursery") so they resolve to a single class instead of many. Any other grade
+ * is returned trimmed and unchanged.
+ */
+export function canonicalGrade(name: string): string {
+  const stripped = (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (["nursery", "nursary", "nur", "nurs", "nursry"].includes(stripped)) return "Nursery";
+  if (stripped === "lkg") return "LKG";
+  if (stripped === "ukg") return "UKG";
+  return (name || "").trim();
+}
+
+/**
  * The standard school grade ladder (India), in display order. Seeded as
  * `classes` for every school so the Class dropdown is populated on day one.
  */
