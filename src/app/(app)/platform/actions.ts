@@ -284,3 +284,108 @@ export async function setSchoolAccess(
   if (failed > 0) return { ok: false, error: `${failed} login(s) could not be updated` };
   return { ok: true, error: null };
 }
+
+/**
+ * PERMANENTLY delete a school and everything belonging to it. Super-admin only.
+ *
+ * Guard rails, because this is irreversible:
+ *   1. the school must already be SUSPENDED (cut access first, then remove), and
+ *   2. the caller must retype the school's exact name.
+ *
+ * Order matters: auth logins and storage objects are cleaned up first (they are
+ * NOT covered by the database cascade — app_users.school_id is ON DELETE SET
+ * NULL, which would otherwise leave orphaned logins that can still sign in).
+ * Deleting the `schools` row then cascades members, classes, templates,
+ * branches, academic years and card batches.
+ */
+export async function deleteSchool(
+  schoolId: string,
+  confirmName: string,
+): Promise<{ ok: boolean; error: string | null }> {
+  const me = await requireRole(["super_admin"]);
+  const admin = createAdminClient();
+
+  const { data: school } = await admin
+    .from("schools")
+    .select("id, name")
+    .eq("id", schoolId)
+    .maybeSingle<{ id: string; name: string }>();
+  if (!school) return { ok: false, error: "School not found." };
+
+  // 2. Typed name must match exactly (case/space-insensitive).
+  const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  if (norm(confirmName) !== norm(school.name)) {
+    return { ok: false, error: "The name you typed does not match the school name." };
+  }
+
+  // Tenant logins for this school.
+  const { data: users, error: usersErr } = await admin
+    .from("app_users")
+    .select("id, role")
+    .eq("school_id", schoolId)
+    .in("role", ["admin", "operator"]);
+  if (usersErr) return { ok: false, error: usersErr.message };
+  const tenantUsers = (users ?? []) as { id: string; role: string }[];
+
+  // 1. Must be suspended first — every tenant login banned (a school with no
+  //    logins at all counts as suspended, there is nothing left to cut off).
+  for (const u of tenantUsers) {
+    const { data: got } = await admin.auth.admin.getUserById(u.id);
+    const bannedUntil = (got?.user as { banned_until?: string | null } | undefined)?.banned_until;
+    const banned = !!bannedUntil && new Date(bannedUntil).getTime() > Date.now();
+    if (!banned) {
+      return {
+        ok: false,
+        error: "Suspend the school's access first, then delete it.",
+      };
+    }
+  }
+
+  // Remove stored files (photos / generated cards / logos) — storage is not
+  // covered by the database cascade. Best-effort: never block the delete.
+  for (const bucket of ["photos", "cards", "logos"] as const) {
+    try {
+      const { data: files } = await admin.storage.from(bucket).list(schoolId, { limit: 1000 });
+      const paths = (files ?? []).map((f) => `${schoolId}/${f.name}`);
+      // One nested level (e.g. cards/<school>/sheets/*).
+      for (const f of files ?? []) {
+        const { data: sub } = await admin.storage
+          .from(bucket)
+          .list(`${schoolId}/${f.name}`, { limit: 1000 });
+        for (const s of sub ?? []) paths.push(`${schoolId}/${f.name}/${s.name}`);
+      }
+      if (paths.length) await admin.storage.from(bucket).remove(paths);
+    } catch {
+      /* storage cleanup is best-effort */
+    }
+  }
+
+  // Delete the tenant's auth logins so no orphaned account can ever sign in.
+  for (const u of tenantUsers) {
+    try {
+      await admin.auth.admin.deleteUser(u.id);
+    } catch {
+      /* app_users row goes away with the cascade regardless */
+    }
+  }
+  await admin.from("app_users").delete().eq("school_id", schoolId);
+
+  // Audit BEFORE the row disappears (audit_log.school_id is ON DELETE SET NULL,
+  // so the entry survives with the name recorded in `meta`).
+  await logAudit(admin, {
+    schoolId,
+    actorId: me.id,
+    action: "school.deleted",
+    targetType: "school",
+    targetId: schoolId,
+    meta: { name: school.name, logins_removed: tenantUsers.length },
+  });
+
+  // Cascades members, classes, id_templates, branches, academic_years, cards.
+  const { error: delErr } = await admin.from("schools").delete().eq("id", schoolId);
+  if (delErr) return { ok: false, error: delErr.message };
+
+  revalidatePath("/platform");
+  revalidatePath("/dashboard");
+  return { ok: true, error: null };
+}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { Building2, Loader2, Search, UserRoundPlus } from "lucide-react";
-import { onboardSchool, setSchoolAccess } from "./actions";
+import { onboardSchool, setSchoolAccess, deleteSchool } from "./actions";
 import AutoRefresh from "../AutoRefresh";
 
 /** Platform-wide headline numbers computed by the server component. */
@@ -70,6 +70,10 @@ export default function PlatformView({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [pending, startTransition] = useTransition();
+  // Permanent-delete flow (suspended schools only): which row is open, and the
+  // school name the super admin must retype to confirm.
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteName, setDeleteName] = useState("");
 
   const activeCount = data.perSchool.filter((s) => !s.suspended).length;
   const suspendedCount = data.perSchool.length - activeCount;
@@ -99,6 +103,21 @@ export default function PlatformView({
             : "School reactivated."
           : r.error ?? "Action failed.",
       );
+      setPendingId(null);
+      router.refresh();
+    });
+  };
+
+  /** Permanently remove a suspended school and all of its data. */
+  const removeSchool = (id: string, typedName: string) => {
+    setPendingId(id);
+    startTransition(async () => {
+      const r = await deleteSchool(id, typedName);
+      setNote(r.ok ? "School deleted permanently." : r.error ?? "Delete failed.");
+      if (r.ok) {
+        setDeleteId(null);
+        setDeleteName("");
+      }
       setPendingId(null);
       router.refresh();
     });
@@ -345,14 +364,56 @@ export default function PlatformView({
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           Working
                         </span>
+                      ) : s.suspended && deleteId === s.id ? (
+                        // Permanent delete: retype the school name to confirm.
+                        <span className="inline-flex flex-wrap items-center justify-end gap-2">
+                          <input
+                            autoFocus
+                            value={deleteName}
+                            onChange={(e) => setDeleteName(e.target.value)}
+                            placeholder={`Type "${s.name}"`}
+                            className="field-input w-56 text-xs"
+                          />
+                          <button
+                            type="button"
+                            disabled={deleteName.trim().toLowerCase() !== s.name.trim().toLowerCase()}
+                            onClick={() => removeSchool(s.id, deleteName)}
+                            className="cursor-pointer text-sm font-medium text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            Delete forever
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeleteId(null);
+                              setDeleteName("");
+                            }}
+                            className="cursor-pointer text-sm text-slate-500 hover:text-slate-700"
+                          >
+                            Cancel
+                          </button>
+                        </span>
                       ) : s.suspended ? (
-                        <button
-                          type="button"
-                          onClick={() => setAccess(s.id, false)}
-                          className="cursor-pointer text-sm font-medium text-teal-700 hover:text-teal-800"
-                        >
-                          Reactivate
-                        </button>
+                        <span className="inline-flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setAccess(s.id, false)}
+                            className="cursor-pointer text-sm font-medium text-teal-700 hover:text-teal-800"
+                          >
+                            Reactivate
+                          </button>
+                          <button
+                            type="button"
+                            title="Permanently delete this school and all of its data. Cannot be undone."
+                            onClick={() => {
+                              setDeleteId(s.id);
+                              setDeleteName("");
+                            }}
+                            className="cursor-pointer text-sm font-medium text-red-600 hover:text-red-700"
+                          >
+                            Delete
+                          </button>
+                        </span>
                       ) : confirmId === s.id ? (
                         <span className="inline-flex items-center gap-2">
                           <span className="text-xs text-slate-500">Suspend?</span>

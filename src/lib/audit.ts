@@ -24,6 +24,7 @@ export type AuditAction =
   | "school.onboarded"
   | "school.suspended"
   | "school.reactivated"
+  | "school.deleted"
   | "school.logo_updated"
   | "school.trial_updated"
   | "superadmin.created"

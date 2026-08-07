@@ -101,8 +101,14 @@ export async function importMembers(
     const candidate = {
       member_type: STAFF_WORDS.has((r.member_type ?? "").trim().toLowerCase()) ? "staff" : "student",
       identifier: r.identifier ?? "",
-      first_name: r.first_name ?? "",
-      last_name: r.last_name ?? "",
+      // Store the name as ONE full name (matches the single "Full name" box on
+      // the member form), so it exports back exactly as it came in — whether the
+      // sheet had one name column or separate first/last columns.
+      first_name: [r.first_name, r.last_name]
+        .map((v) => (v ?? "").trim())
+        .filter(Boolean)
+        .join(" "),
+      last_name: "",
       class_id: className ? (classMap.get(classKey(className, effSection(className, r.section ?? ""))) ?? "") : "",
       academic_year_id: yearName ? (yearMap.get(yearName.toLowerCase()) ?? "") : "",
       roll_no: r.roll_no ?? "",

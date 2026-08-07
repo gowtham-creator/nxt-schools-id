@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import * as XLSX from "xlsx";
-import { Download, FileSpreadsheet, Images } from "lucide-react";
+import { Download, FileSpreadsheet, Images, Layers } from "lucide-react";
 import { getMembersForExport, type ExportRow } from "./export-actions";
 import { makeZip, type ZipFile } from "./zip";
 
@@ -122,12 +122,15 @@ function buildWorkbook(rows: ExportRow[]): Uint8Array {
  */
 export default function ExportButton({
   ids,
+  classId,
   label = "Export",
 }: {
   ids?: string[];
+  /** When the members list is filtered to one class, exports cover just that class. */
+  classId?: string;
   label?: string;
 }) {
-  const [busy, setBusy] = useState<"" | "xlsx" | "zip">("");
+  const [busy, setBusy] = useState<"" | "xlsx" | "zip" | "classes">("");
   const [note, setNote] = useState("");
   const [progress, setProgress] = useState("");
 
@@ -137,7 +140,7 @@ export default function ExportButton({
     setBusy("xlsx");
     setNote("");
     try {
-      const rows = await getMembersForExport(ids);
+      const rows = await getMembersForExport(ids, classId);
       if (!rows.length) {
         setNote("No members to export.");
         return;
@@ -150,12 +153,55 @@ export default function ExportButton({
     }
   }
 
+  /**
+   * One ERP-format .xlsx PER CLASS, bundled in a ZIP — so the ERP can be loaded
+   * class by class instead of splitting a whole-school sheet by hand.
+   */
+  async function exportPerClass() {
+    setBusy("classes");
+    setNote("");
+    setProgress("");
+    try {
+      const rows = await getMembersForExport(ids, classId);
+      if (!rows.length) {
+        setNote("No students to export.");
+        return;
+      }
+      // Group by class + section, preserving each group's row order.
+      const groups = new Map<string, ExportRow[]>();
+      for (const r of rows) {
+        const key = [r.class || "No class", r.section].filter(Boolean).join(" ");
+        const list = groups.get(key);
+        if (list) list.push(r);
+        else groups.set(key, [r]);
+      }
+      const names = new Set<string>();
+      const files: ZipFile[] = [];
+      for (const [klass, list] of [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+        let base = sanitize(klass);
+        let name = `${base}.xlsx`;
+        let i = 2;
+        while (names.has(name.toLowerCase())) name = `${(base = sanitize(klass))}_${i++}.xlsx`;
+        names.add(name.toLowerCase());
+        // Sl No restarts at 1 within each class file.
+        files.push({ name, data: buildWorkbook(list) });
+      }
+      download(makeZip(files), `students-by-class-${stamp}.zip`);
+      setNote(`Exported ${groups.size} class file${groups.size === 1 ? "" : "s"} (${rows.length} students).`);
+    } catch {
+      setNote("Export failed.");
+    } finally {
+      setBusy("");
+      setProgress("");
+    }
+  }
+
   async function exportZip() {
     setBusy("zip");
     setNote("");
     setProgress("");
     try {
-      const rows = await getMembersForExport(ids);
+      const rows = await getMembersForExport(ids, classId);
       if (!rows.length) {
         setNote("No members to export.");
         return;
@@ -223,6 +269,16 @@ export default function ExportButton({
         >
           <FileSpreadsheet className="h-4 w-4 text-slate-400" />
           {busy === "xlsx" ? "Preparing…" : "Excel spreadsheet"}
+        </button>
+        <button
+          type="button"
+          disabled={!!busy}
+          onClick={exportPerClass}
+          title="One ERP-format file per class, zipped — load the ERP class by class."
+          className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          <Layers className="h-4 w-4 text-slate-400" />
+          {busy === "classes" ? "Preparing…" : "One file per class (ZIP)"}
         </button>
         <button
           type="button"

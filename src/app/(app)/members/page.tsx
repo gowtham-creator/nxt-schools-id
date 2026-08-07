@@ -192,7 +192,11 @@ export default async function MembersPage({
           <Link href="/members/import" className="btn-secondary">
             Import CSV/Excel
           </Link>
-          <ExportButton label="Export" />
+          {/* Honours the Class filter: pick a class, then Export gives just that class. */}
+          <ExportButton
+            classId={activeClass || undefined}
+            label={activeClass ? "Export class" : "Export"}
+          />
           <Link href="/members/new" className="btn-primary">
             + Add member
           </Link>

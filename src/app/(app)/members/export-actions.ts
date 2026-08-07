@@ -56,11 +56,15 @@ type Raw = {
 const s = (v: string | null | undefined): string => v ?? "";
 
 /**
- * Return the caller school's members for export, flattened. RLS scopes rows to
- * the caller's school. Pass `ids` to export only the selected members; omit for
- * all. Photos are returned as public URLs (fetched client-side for the ZIP).
+ * Return the caller school's students for export, flattened. RLS scopes rows to
+ * the caller's school. Pass `ids` to export only the selected members, and/or
+ * `classId` to export a single class (the ERP is loaded class by class).
+ * Photos are returned as public URLs (fetched client-side for the ZIP).
  */
-export async function getMembersForExport(ids?: string[]): Promise<ExportRow[]> {
+export async function getMembersForExport(
+  ids?: string[],
+  classId?: string,
+): Promise<ExportRow[]> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -85,6 +89,7 @@ export async function getMembersForExport(ids?: string[]): Promise<ExportRow[]> 
       .order("id", { ascending: true })
       .range(from, from + PAGE - 1);
     if (ids && ids.length > 0) query = query.in("id", ids);
+    if (classId) query = query.eq("class_id", classId);
     const { data, error } = await query;
     if (error) break;
     if (!data || data.length === 0) break;

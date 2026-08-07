@@ -99,15 +99,23 @@ export function MemberForm({
         <PhotoField initialUrl={member?.photo_url ?? null} memberId={member?.id ?? null} />
 
         <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field
-            label={type === "student" ? "Student Name *" : "Staff / Teacher Name *"}
-            htmlFor="first_name"
-          >
-            <input id="first_name" name="first_name" required defaultValue={member?.first_name ?? ""} className={inputCls} />
-          </Field>
-          <Field label="Surname" htmlFor="last_name">
-            <input id="last_name" name="last_name" defaultValue={member?.last_name ?? ""} className={inputCls} />
-          </Field>
+          {/* ONE full-name box (no separate surname) so the name is stored — and
+              exported — exactly as typed, including any middle name. */}
+          <div className="sm:col-span-2">
+            <Field
+              label={type === "student" ? "Student Name *" : "Staff / Teacher Name *"}
+              htmlFor="full_name"
+            >
+              <input
+                id="full_name"
+                name="full_name"
+                required
+                placeholder="Full name as it should appear on the ID card"
+                defaultValue={[member?.first_name, member?.last_name].filter(Boolean).join(" ")}
+                className={inputCls}
+              />
+            </Field>
+          </div>
           <Field label={type === "student" ? "Admission No" : "Employee ID"} htmlFor="identifier">
             <input id="identifier" name="identifier" defaultValue={member?.identifier ?? ""} className={inputCls} />
           </Field>

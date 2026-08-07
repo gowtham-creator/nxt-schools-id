@@ -15,6 +15,24 @@ function field(fd: FormData, key: string): string {
 }
 
 /**
+ * Parse the member form. The form collects ONE "full_name" box (no separate
+ * surname), so the whole name — middle names included — is stored verbatim in
+ * `first_name` with `last_name` cleared. Everything that renders or exports a
+ * name joins `[first_name, last_name]`, so this reads back exactly as typed and
+ * older split records keep working unchanged.
+ */
+function memberFormObject(fd: FormData): Record<string, unknown> {
+  const o = formToObject(fd);
+  const full = String(o.full_name ?? "").trim().replace(/\s+/g, " ");
+  if (full) {
+    o.first_name = full;
+    o.last_name = "";
+  }
+  delete o.full_name;
+  return o;
+}
+
+/**
  * Find (or create) the class row for a grade + section within a school and
  * return its id. Empty grade -> null (member has no class). Uses the service
  * role so a class can be created even when the caller lacks INSERT on classes;
@@ -72,7 +90,7 @@ async function ctx() {
 export async function createMember(fd: FormData) {
   const { supabase, schoolId, user } = await ctx();
   if (!schoolId) redirect("/members?error=No+school+assigned+to+your+account");
-  const r = memberSchema.safeParse(formToObject(fd));
+  const r = memberSchema.safeParse(memberFormObject(fd));
   if (!r.success)
     redirect(`/members/new?error=${encodeURIComponent(r.error.issues[0].message)}`);
   const class_id = await resolveClassId(schoolId, field(fd, "class_grade"), field(fd, "class_section"));
@@ -104,7 +122,7 @@ export async function createMember(fd: FormData) {
 
 export async function updateMember(id: string, fd: FormData) {
   const { supabase, schoolId } = await ctx();
-  const r = memberSchema.safeParse(formToObject(fd));
+  const r = memberSchema.safeParse(memberFormObject(fd));
   if (!r.success)
     redirect(`/members/${id}/edit?error=${encodeURIComponent(r.error.issues[0].message)}`);
   const class_id = schoolId
